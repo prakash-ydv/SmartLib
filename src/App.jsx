@@ -13,6 +13,7 @@ import LoadingSkeleton from "./components/LoadingSkeleton";
 import Footer from "./components/Footer";
 import BookDetails from "./components/BookDetails";
 import BranchLegend from "./components/BranchLegend";
+import CampusAccessGate from "./components/CampusAccessGate";
 
 import { booksData } from "./data/booksData";
 
