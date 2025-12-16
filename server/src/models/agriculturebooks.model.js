@@ -5,15 +5,14 @@ const agriculturebookSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  desc: {
+    type: String,
+  },
   author: {
     type: String,
     required: true,
   },
-  accNo: {
-    type: String,
-    required: true,
-    unique: true,
-  },
+  accNos: [String],
   publisher: {
     type: String,
   },
@@ -26,7 +25,7 @@ const agriculturebookSchema = new mongoose.Schema({
   language: {
     type: String,
   },
-  library: {
+  college: {
     type: String,
     default: "iesuniversity",
   },
@@ -40,10 +39,14 @@ const agriculturebookSchema = new mongoose.Schema({
   subBranch: {
     type: String,
   },
+  year: {
+    type: Number,
+  },
   bookImage: {
     type: String,
     default: "NEEDS_MANUAL",
   },
+  isbnNo: { type: String },
   createdAt: {
     type: Date,
     default: Date.now,
