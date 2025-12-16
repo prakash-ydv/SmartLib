@@ -1,8 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const bookRouter = require("./routes/books.routes");
+const connectDB = require("./db/db.connect");
 
 const app = express();
+
+// DB
+connectDB();
 
 // Core middlewares
 app.use(cors());
