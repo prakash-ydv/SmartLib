@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import connectDB from "./config/connectDB.js";
+import addBookRouter from "./routes/add.book.route.js";
 const app = express();
 
 import dotenv from 'dotenv';
@@ -13,6 +14,8 @@ app.use(cors());
 // connect DB
 connectDB()
 
+// routes
+app.use("/add", addBookRouter);
 
 app.get("/", (req, res) => {
     res.send("API running 🚀");
