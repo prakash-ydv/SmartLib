@@ -5,6 +5,7 @@ import addBookRouter from "./routes/add.book.route.js";
 const app = express();
 
 import dotenv from 'dotenv';
+import searchBookRouter from "./routes/search.book.route.js";
 dotenv.config();
 
 // middleware
@@ -16,6 +17,7 @@ connectDB()
 
 // routes
 app.use("/add", addBookRouter);
+app.use("/search", searchBookRouter);
 
 app.get("/", (req, res) => {
     res.send("API running 🚀");
