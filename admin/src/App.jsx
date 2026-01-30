@@ -1,20 +1,24 @@
-// admin/src/App.jsx
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
+import { Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProtectedRoute from "./components/common/ProtectedRoute";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Default Admin Dashboard */}
-        <Route path="/" element={<AdminDashboard />} />
+    <Routes>
+      <Route path="/login" element={<Login />} />
 
-        {/* Test / Demo Route */}
-        <Route path="/h" element={<h1>Hii</h1>} />
-      </Routes>
-    </Router>
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

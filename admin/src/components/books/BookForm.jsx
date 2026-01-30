@@ -1,13 +1,8 @@
 import React from 'react';
 
 /**
- * Book Form Component (Add & Edit)
- * @param {object} formData - Form state
- * @param {function} setFormData - Update form state
- * @param {array} categories - Available categories
- * @param {function} onSubmit - Form submit handler
- * @param {function} onCancel - Cancel handler
- * @param {string} submitLabel - Submit button text
+ * 📝 Reusable Book Form Component
+ * Used by both AddBook and EditBook pages
  */
 function BookForm({ 
   formData, 
@@ -15,10 +10,11 @@ function BookForm({
   categories, 
   onSubmit, 
   onCancel, 
-  submitLabel 
+  submitLabel,
+  disabled = false 
 }) {
   return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+    <div className="space-y-4">
       
       {/* Title & Author Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -32,6 +28,7 @@ function BookForm({
             onChange={(e) => setFormData({...formData, title: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter book title"
+            disabled={disabled}
             required
           />
         </div>
@@ -46,6 +43,7 @@ function BookForm({
             onChange={(e) => setFormData({...formData, author: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter author name"
+            disabled={disabled}
             required
           />
         </div>
@@ -62,6 +60,7 @@ function BookForm({
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           placeholder="Enter book description"
+          disabled={disabled}
         />
       </div>
 
@@ -77,6 +76,7 @@ function BookForm({
             onChange={(e) => setFormData({...formData, isbn: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="978-0000000000"
+            disabled={disabled}
           />
         </div>
         
@@ -91,6 +91,7 @@ function BookForm({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             min="1000"
             max={new Date().getFullYear()}
+            disabled={disabled}
           />
         </div>
       </div>
@@ -105,6 +106,7 @@ function BookForm({
             value={formData.category}
             onChange={(e) => setFormData({...formData, category: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={disabled}
             required
           >
             <option value="">Select category</option>
@@ -126,6 +128,7 @@ function BookForm({
             onChange={(e) => setFormData({...formData, bookCover: e.target.value})}
             placeholder="https://example.com/cover.jpg"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={disabled}
           />
         </div>
       </div>
@@ -138,6 +141,7 @@ function BookForm({
           checked={formData.isAvailable}
           onChange={(e) => setFormData({...formData, isAvailable: e.target.checked})}
           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          disabled={disabled}
         />
         <label htmlFor="isAvailable" className="text-sm text-gray-700">
           Available for borrowing
@@ -149,14 +153,16 @@ function BookForm({
         <button
           onClick={onCancel}
           type="button"
-          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+          disabled={disabled}
         >
           Cancel
         </button>
         <button
           onClick={onSubmit}
           type="button"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={disabled}
         >
           {submitLabel}
         </button>
