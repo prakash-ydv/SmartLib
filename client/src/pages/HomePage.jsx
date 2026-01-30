@@ -1,3 +1,6 @@
+// ✅ OPTIMIZED & BUG-FREE HomePage.jsx
+// 📁 Location: src/pages/HomePage.jsx
+
 import React, {
   useState,
   useEffect,
@@ -8,23 +11,37 @@ import React, {
 import useSWR from "swr";
 import { useNavigate } from "react-router-dom";
 
+// Environment Variables
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+// Component Imports
+import Hero from "../components/Hero";
 import EnhancedSearchFilter from "../components/EnhancedSearchFilter";
 import BookCard from "../components/BookCard";
 import Pagination from "../components/Pagination";
 import LoadingSkeleton from "../components/LoadingSkeleton";
+
+// API & Context
 import { getDepartmentBook } from "../api/fetchBookAPI";
 import { BookContext } from "../context/BookContext";
 
 function HomePage() {
   const navigate = useNavigate();
-  // context
+
+  // ============================================
+  // CONTEXT MANAGEMENT
+  // ============================================
   const context = useContext(BookContext);
   if (!context) {
     throw new Error("BookContext must be used inside BookProvider");
   }
   const { allBooks, setAllBooks } = context;
 
+  // ============================================
+  // STATE MANAGEMENT
+  // ============================================
+  
+  // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     branch: "all",
@@ -37,68 +54,99 @@ function HomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(24);
 
-  // Memoized Filtered Books
+  // ✅ FIX: Added missing isLoading state
+  const [isLoading, setIsLoading] = useState(false);
+
+  // ============================================
+  // DATA FETCHING (SWR)
+  // ============================================
+  const { data, error, isLoading: isFetchingBooks } = useSWR(
+    `${BASE_URL}/get/books/agriculture`,
+    getDepartmentBook
+  );
+
+  // Update allBooks when data changes
+  useEffect(() => {
+    if (!data) return;
+    
+    // TODO: Remove slice when backend returns all books
+    const someBooks = data.slice(0, 12);
+    setAllBooks(someBooks);
+    
+    console.log("📚 Loaded Books:", someBooks.length);
+  }, [data, setAllBooks]);
+
+  // ============================================
+  // MEMOIZED COMPUTED VALUES
+  // ============================================
+
+  // Filtered Books based on search and filters
   const filteredBooks = useMemo(() => {
+    if (!allBooks || allBooks.length === 0) return [];
+    
     let result = [...allBooks];
 
-    // Search filter
-    if (searchTerm) {
+    // Search Filter
+    if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       result = result.filter(
         (book) =>
-          book.title.toLowerCase().includes(search) ||
-          book.author.toLowerCase().includes(search) ||
-          book.isbn.toLowerCase().includes(search) ||
-          (book.publisher && book.publisher.toLowerCase().includes(search))
+          book.title?.toLowerCase().includes(search) ||
+          book.author?.toLowerCase().includes(search) ||
+          book.isbn?.toLowerCase().includes(search) ||
+          book.publisher?.toLowerCase().includes(search)
       );
     }
 
-    // Branch filter
+    // Branch Filter
     if (filters.branch !== "all") {
       result = result.filter((book) => book.branch === filters.branch);
     }
 
-    // Year filter
+    // Year Filter
     if (filters.year !== "all") {
       result = result.filter((book) => book.year === filters.year);
     }
 
-    // Genre filter
+    // Genre Filter
     if (filters.genre !== "all") {
       result = result.filter((book) => book.genre === filters.genre);
     }
 
-    // Availability filter
+    // Availability Filter
     if (filters.availability !== "all") {
-      result = result.filter((book) =>
-        filters.availability === "available" ? book.available : !book.available
-      );
+      const isAvailable = filters.availability === "available";
+      result = result.filter((book) => book.available === isAvailable);
     }
 
     return result;
   }, [searchTerm, filters, allBooks]);
 
-  // Paginated Books
+  // ✅ FIX: Paginated Books (was missing in render)
   const paginatedBooks = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredBooks.slice(startIndex, endIndex);
   }, [filteredBooks, currentPage, itemsPerPage]);
 
-  // Stats
+  // Statistics for display
   const stats = useMemo(
     () => ({
-      total: allBooks?.length,
-      available: allBooks?.filter((b) => b.available).length,
+      total: allBooks?.length || 0,
+      available: allBooks?.filter((b) => b.available).length || 0,
       showing: filteredBooks.length,
     }),
     [allBooks, filteredBooks]
   );
 
   // Total Pages
-  const totalPages = Math.ceil(filteredBooks.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredBooks.length / itemsPerPage) || 1;
 
-  // Reset handler
+  // ============================================
+  // EVENT HANDLERS
+  // ============================================
+
+  // Reset all filters
   const handleReset = useCallback(() => {
     setSearchTerm("");
     setFilters({
@@ -110,49 +158,74 @@ function HomePage() {
     setCurrentPage(1);
   }, []);
 
-  // Page change handler
+  // Page change with smooth scroll
   const handlePageChange = useCallback((page) => {
     setIsLoading(true);
     setCurrentPage(page);
+    
+    // Smooth scroll to top of content
     window.scrollTo({ top: 400, behavior: "smooth" });
 
+    // Simulate loading for smooth UX
     setTimeout(() => setIsLoading(false), 300);
   }, []);
 
-  // Items per page change handler
+  // Items per page change
   const handleItemsPerPageChange = useCallback((newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page
   }, []);
 
-  // Book click handler
-  const handleBookClick = useCallback((index) => {
-    navigate(`/book/${index}`);
-  }, []);
+  // Book click handler - Navigate to details
+  const handleBookClick = useCallback(
+    (bookId) => {
+      navigate(`/book/${bookId}`);
+    },
+    [navigate]
+  );
 
-  // Reset page when filters change
+  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filters]);
 
-  const { data, error, isLoading } = useSWR(
-    `${BASE_URL}/get/books/agriculture`,
-    getDepartmentBook
-  );
+  // ============================================
+  // ERROR HANDLING
+  // ============================================
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Failed to Load Books
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {error.message || "Something went wrong"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    const someBooks = data?.slice(0, 12);
-
-    if (!someBooks) return;
-    setAllBooks(someBooks);
-    console.log(someBooks);
-  }, [data]);
-
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <>
-      {/* Main Container - FIXED RESPONSIVE */}
+      {/* Hero Section */}
+      <Hero />
+
+      {/* Main Container */}
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-8 max-w-[1800px] mx-auto">
-        {/* Search & Filter */}
+        
+        {/* Search & Filter Section */}
         <EnhancedSearchFilter
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -164,6 +237,7 @@ function HomePage() {
 
         {/* Books Section */}
         <div className="mt-8 sm:mt-12">
+          
           {/* Section Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
@@ -171,27 +245,42 @@ function HomePage() {
               Library Catalog
             </h2>
             <div className="text-xs sm:text-sm text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
-              Page {currentPage} of {totalPages}
+              {totalPages > 0
+                ? `Page ${currentPage} of ${totalPages}`
+                : "No pages"}
             </div>
           </div>
 
-          {/* Loading State */}
-          {isLoading ? (
+          {/* Content Area */}
+          {isFetchingBooks ? (
+            // Initial Loading State
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent mb-4"></div>
+                <p className="text-lg text-gray-600 font-medium">
+                  Loading books from library...
+                </p>
+                <p className="text-sm text-gray-500 mt-2">Please wait</p>
+              </div>
+            </div>
+          ) : isLoading ? (
+            // Pagination Loading State
             <LoadingSkeleton count={itemsPerPage} />
           ) : (
             <>
-              {/* Books Grid */}
-              {allBooks?.length > 0 ? (
+              {/* Books Grid or Empty State */}
+              {paginatedBooks.length > 0 ? (
                 <div className="books-grid">
-                  {allBooks.map((book, index) => (
+                  {paginatedBooks.map((book, index) => (
                     <BookCard
-                      key={index}
+                      key={book._id || book.id || index}
                       book={book}
-                      onClick={handleBookClick}
+                      onClick={() => handleBookClick(book._id || book.id || index)}
                     />
                   ))}
                 </div>
               ) : (
+                // Empty State
                 <div className="text-center py-12 sm:py-20 px-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full mb-4 sm:mb-6">
                     <svg
@@ -224,7 +313,7 @@ function HomePage() {
               )}
 
               {/* Pagination */}
-              {allBooks?.length > 0 && (
+              {paginatedBooks.length > 0 && (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}

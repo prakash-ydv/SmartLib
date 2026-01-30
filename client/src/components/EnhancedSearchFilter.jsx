@@ -259,6 +259,25 @@ const EnhancedSearchFilter = ({
               </span>
             )}
           </button>
+
+          {/* Quick Stats Preview */}
+          <div className="flex items-center gap-4 text-sm font-semibold">
+            <div className="flex items-center gap-2 text-gray-600">
+              <BookOpen className="h-4 w-4 text-indigo-600" />
+              <span className="hidden sm:inline">Total:</span>
+              <span className="text-gray-900">{stats.total.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="hidden sm:inline">Available:</span>
+              <span className="text-gray-900">{stats.available.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <TrendingUp className="h-4 w-4 text-purple-600" />
+              <span className="hidden sm:inline">Results:</span>
+              <span className="text-gray-900">{stats.showing.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -437,6 +456,48 @@ const EnhancedSearchFilter = ({
           )}
         </div>
       )}
+
+      {/* Detailed Stats Section */}
+      <div className="p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-gray-100 border-t-2 border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          
+          {/* Total Books */}
+          <div className="bg-white rounded-xl p-5 shadow-md border border-gray-200 hover:border-indigo-400 hover:shadow-lg transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <BookOpen className="h-8 w-8 text-indigo-600 group-hover:scale-110 transition-transform" />
+              <div className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">
+                TOTAL
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 font-semibold mb-1">Total Books in Library</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.total.toLocaleString()}</p>
+          </div>
+
+          {/* Available Books */}
+          <div className="bg-white rounded-xl p-5 shadow-md border border-gray-200 hover:border-green-400 hover:shadow-lg transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <CheckCircle className="h-8 w-8 text-green-600 group-hover:scale-110 transition-transform" />
+              <div className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full">
+                AVAILABLE
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 font-semibold mb-1">Available for Issue</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.available.toLocaleString()}</p>
+          </div>
+
+          {/* Search Results */}
+          <div className="bg-white rounded-xl p-5 shadow-md border border-gray-200 hover:border-purple-400 hover:shadow-lg transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <TrendingUp className="h-8 w-8 text-purple-600 group-hover:scale-110 transition-transform" />
+              <div className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-full">
+                RESULTS
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 font-semibold mb-1">Showing Results</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.showing.toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
