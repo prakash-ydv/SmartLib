@@ -12,7 +12,7 @@ async function updateBookController(req, res) {
                 message: "Admin not logged in"
             });
         }
-        
+
         const admin = await adminModel.findById(adminId);
 
         if (!admin) {
@@ -54,4 +54,36 @@ async function updateBookController(req, res) {
     }
 }
 
-export default updateBookController;
+async function updateBookViewCount(req, res) {
+    try {
+        const { id } = req.params;
+
+        console.log("update book ID", id);
+        const book = await bookModel.findByIdAndUpdate(
+            id,
+            { $inc: { views: 1 } },
+            { new: true }
+        );
+
+        if (!book) {
+            return res.status(404).json({
+                status: "failed",
+                message: "Book not found"
+            });
+        }
+
+        return res.status(200).json({
+            status: "success",
+            message: "Book view count updated successfully",
+            book
+        });
+    } catch (error) {
+        console.log("error in update book view count", error);
+        return res.status(500).json({
+            status: "failed",
+            message: "Internal server error"
+        });
+    }
+}
+
+export { updateBookController, updateBookViewCount };
