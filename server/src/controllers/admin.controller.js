@@ -21,9 +21,21 @@ async function createAdminRoute(req, res) {
 
         // create admin
         const newAdmin = await adminModel.create({ name, email, password: hashedPassword });
-        res.status(201).json({ status: "success", message: "Admin created successfully", data: { name: newAdmin.name, email: newAdmin.email } });
+
+        // generate token
+        const token = generateToken({ id: newAdmin._id });
+
+        // set token in cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+
+        return res.status(201).json({ status: "success", message: "Admin created successfully", data: { name: newAdmin.name, email: newAdmin.email } });
     } catch (error) {
-        res.status(500).json({ status: "failed", message: "Internal server error", error });
+        return res.status(500).json({ status: "failed", message: "Internal server error", error });
     }
 }
 
@@ -48,10 +60,21 @@ async function loginAdminRoute(req, res) {
             return res.status(401).json({ status: "failed", message: "Invalid password" });
         }
 
+        // generate token
+        const token = generateToken({ id: admin._id });
+
+        // set token in cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+
         // return admin data
-        res.status(200).json({ status: "success", message: "Admin logged in successfully", data: { name: admin.name, email: admin.email } });
+        return res.status(200).json({ status: "success", message: "Admin logged in successfully", data: { name: admin.name, email: admin.email } });
     } catch (error) {
-        res.status(500).json({ status: "failed", message: "Internal server error", error });
+        return res.status(500).json({ status: "failed", message: "Internal server error", error });
     }
 }
 
