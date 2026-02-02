@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 
 /**
- * 📝 LoginForm Component
- * Beautiful and reusable login form
+ * 📝 LoginForm Component - REAL BACKEND INTEGRATED
  */
 const LoginForm = ({ onSubmit, isLoading, error }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');  // ✅ CHANGED: username → email
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(username, password);
+    onSubmit(email, password);  // ✅ CHANGED: username → email
   };
 
   return (
@@ -25,23 +24,24 @@ const LoginForm = ({ onSubmit, isLoading, error }) => {
         </div>
       )}
 
-      {/* Username Field */}
+      {/* Email Field */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Username
+          Email  {/* ✅ CHANGED: Username → Email */}
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              {/* ✅ CHANGED: Email icon */}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
             </svg>
           </div>
           <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            type="email"  /* ✅ CHANGED: text → email */
+            value={email}  /* ✅ CHANGED: username → email */
+            onChange={(e) => setEmail(e.target.value)}  /* ✅ CHANGED */
             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            placeholder="Enter username"
+            placeholder="Enter your email"  /* ✅ CHANGED */
             required
             disabled={isLoading}
           />
@@ -110,7 +110,7 @@ const LoginForm = ({ onSubmit, isLoading, error }) => {
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={isLoading || !username || !password}
+        disabled={isLoading || !email || !password}  /* ✅ CHANGED: username → email */
         className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
       >
         {isLoading ? (
@@ -125,13 +125,6 @@ const LoginForm = ({ onSubmit, isLoading, error }) => {
           'Sign in to Dashboard'
         )}
       </button>
-
-      {/* Demo Credentials */}
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-xs text-blue-800 text-center">
-          <strong>Demo Credentials:</strong> admin / admin123
-        </p>
-      </div>
     </form>
   );
 };

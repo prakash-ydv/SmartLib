@@ -40,11 +40,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem("libraryAdmin");
-    setUser(null);
-  };
+  localStorage.removeItem("libraryAdmin");
+  setUser(null);
+  window.location.href = '/login'; 
+};
 
-  // 🔥 SINGLE SOURCE OF TRUTH
   const isAuthenticated = () => {
     return !!localStorage.getItem("libraryAdmin");
   };

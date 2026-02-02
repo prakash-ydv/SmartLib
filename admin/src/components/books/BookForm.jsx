@@ -1,13 +1,13 @@
 import React from 'react';
+import { DEPARTMENTS } from '../../api/axios';
 
 /**
- * 📝 Reusable Book Form Component
+ * 📝 Reusable Book Form Component - REAL BACKEND SCHEMA
  * Used by both AddBook and EditBook pages
  */
 function BookForm({ 
   formData, 
   setFormData, 
-  categories, 
   onSubmit, 
   onCancel, 
   submitLabel,
@@ -35,7 +35,7 @@ function BookForm({
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Author <span className="text-red-500">*</span>
+            Author
           </label>
           <input
             type="text"
@@ -44,7 +44,6 @@ function BookForm({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter author name"
             disabled={disabled}
-            required
           />
         </div>
       </div>
@@ -64,8 +63,28 @@ function BookForm({
         />
       </div>
 
-      {/* ISBN & Publication Year Row */}
+      {/* Department & ISBN Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Department <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.department}
+            onChange={(e) => setFormData({...formData, department: e.target.value})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={disabled}
+            required
+          >
+            <option value="">Select department</option>
+            {DEPARTMENTS.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+        </div>
+        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             ISBN
@@ -79,73 +98,77 @@ function BookForm({
             disabled={disabled}
           />
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Publication Year
-          </label>
-          <input
-            type="number"
-            value={formData.publicationYear}
-            onChange={(e) => setFormData({...formData, publicationYear: Number(e.target.value)})}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            min="1000"
-            max={new Date().getFullYear()}
-            disabled={disabled}
-          />
-        </div>
       </div>
 
-      {/* Category & Book Cover Row */}
+      {/* Publisher & Edition Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category <span className="text-red-500">*</span>
+            Publisher
           </label>
-          <select
-            value={formData.category}
-            onChange={(e) => setFormData({...formData, category: e.target.value})}
+          <input
+            type="text"
+            value={formData.publisher}
+            onChange={(e) => setFormData({...formData, publisher: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Enter publisher name"
             disabled={disabled}
-            required
-          >
-            <option value="">Select category</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          />
         </div>
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Book Cover URL
+            Edition
           </label>
           <input
-            type="url"
-            value={formData.bookCover}
-            onChange={(e) => setFormData({...formData, bookCover: e.target.value})}
-            placeholder="https://example.com/cover.jpg"
+            type="text"
+            value={formData.edition}
+            onChange={(e) => setFormData({...formData, edition: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="e.g., 1st, 2nd, Revised"
             disabled={disabled}
           />
         </div>
       </div>
 
-      {/* Availability Checkbox */}
-      <div className="flex items-center space-x-2 py-2">
+      {/* Cover URL */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Book Cover URL
+        </label>
         <input
-          type="checkbox"
-          id="isAvailable"
-          checked={formData.isAvailable}
-          onChange={(e) => setFormData({...formData, isAvailable: e.target.checked})}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          type="url"
+          value={formData.cover_url}
+          onChange={(e) => setFormData({...formData, cover_url: e.target.value})}
+          placeholder="https://example.com/cover.jpg"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={disabled}
         />
-        <label htmlFor="isAvailable" className="text-sm text-gray-700">
-          Available for borrowing
+      </div>
+
+      {/* Copies (Optional - Advanced) */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Book Copies (IDs)
+          <span className="text-xs text-gray-500 ml-2">(Optional - comma separated)</span>
         </label>
+        <input
+          type="text"
+          value={formData.copies?.join(', ') || ''}
+          onChange={(e) => {
+            const copiesArray = e.target.value
+              .split(',')
+              .map(s => s.trim())
+              .filter(s => s !== '');
+            setFormData({...formData, copies: copiesArray});
+          }}
+          placeholder="e.g., COPY001, COPY002"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          disabled={disabled}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Enter book copy IDs separated by commas
+        </p>
       </div>
 
       {/* Action Buttons */}

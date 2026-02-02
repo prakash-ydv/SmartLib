@@ -1,66 +1,79 @@
 import React, { useState } from 'react';
 import BookForm from '../components/books/BookForm';
+import { addBook } from '../api/axios'; // ← Real API import
 
 /**
- * ➕ Add Book - Inline Form (No Modal)
- * Opens directly on the same page
+ * ➕ Add Book - Real Backend Integration
  */
-const AddBook = ({ isOpen, onClose, onBookAdded, categories }) => {
+const AddBook = ({ isOpen, onClose, onBookAdded }) => {
   
-  // Form state
+  // Form state - MATCHED TO BACKEND SCHEMA
   const [formData, setFormData] = useState({
-    title: '',
-    author: '',
-    description: '',
-    bookCover: '',
-    isbn: '',
-    publicationYear: new Date().getFullYear(),
-    category: '',
-    isAvailable: true,
+    title: '',              // Required
+    description: '',        // Optional
+    author: '',            // Optional
+    department: '',        // Required (enum)
+    isbn: '',              // Optional (but unique if provided)
+    publisher: '',         // Optional
+    edition: '',           // Optional
+    cover_url: '',         // Optional
+    copies: [],            // Optional (array of strings)
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   // Reset form
   const resetForm = () => {
     setFormData({
       title: '',
-      author: '',
       description: '',
-      bookCover: '',
+      author: '',
+      department: '',
       isbn: '',
-      publicationYear: new Date().getFullYear(),
-      category: '',
-      isAvailable: true,
+      publisher: '',
+      edition: '',
+      cover_url: '',
+      copies: [],
     });
+    setError(null);
   };
 
-  // Handle submit
+  // Handle submit - REAL API CALL
   const handleSubmit = async () => {
     // Validation
-    if (!formData.title || !formData.author || !formData.category) {
-      alert('Please fill all required fields!');
+    if (!formData.title || !formData.department) {
+      setError('Title and Department are required!');
       return;
     }
 
     setIsSubmitting(true);
+    setError(null);
 
     try {
-      const newBook = {
-        ...formData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      };
+      // Clean data - remove empty fields
+      const cleanData = Object.fromEntries(
+        Object.entries(formData).filter(([_, v]) => {
+          if (Array.isArray(v)) return v.length > 0;
+          return v !== '' && v !== null && v !== undefined;
+        })
+      );
 
+      // 🚀 REAL API CALL
+      const response = await addBook(cleanData);
+
+      // Notify parent component
       if (onBookAdded) {
-        await onBookAdded(newBook);
+        await onBookAdded(response.data || response);
       }
 
-      alert('Book added successfully!');
+      alert('✅ Book added successfully!');
       resetForm();
       onClose();
-    } catch (error) {
-      alert('Failed to add book: ' + error.message);
+      
+    } catch (err) {
+      console.error('Add book error:', err);
+      setError(err.message || 'Failed to add book. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -92,14 +105,20 @@ const AddBook = ({ isOpen, onClose, onBookAdded, categories }) => {
         </button>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          ❌ {error}
+        </div>
+      )}
+
       {/* Book Form */}
       <BookForm
         formData={formData}
         setFormData={setFormData}
-        categories={categories}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
-        submitLabel={isSubmitting ? 'Adding...' : 'Add Book'}
+        submitLabel={isSubmitting ? 'Adding Book...' : 'Add Book'}
         disabled={isSubmitting}
       />
     </div>

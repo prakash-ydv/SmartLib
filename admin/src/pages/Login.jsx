@@ -1,34 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LoginForm from '../components/auth/LoginForm';
-import { useAuth } from '../hooks/useAuth';
+import { adminLogin } from '../api/axios';
 
-/**
- * 🔐 Login Page
- * Beautiful login page with gradient background
- */
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async (username, password) => {
+  const handleLogin = async (email, password) => {
     setIsLoading(true);
     setError('');
 
     try {
-      const success = await login(username, password);
+      const response = await adminLogin(email, password);
       
-      if (success) {
-        // Redirect to dashboard
-        navigate('/admin');
+      // ✅ Check status
+      if (response && response.status === 'success') {
+        navigate('/', { replace: true });
       } else {
-        setError('Invalid username or password');
+        setError('Login failed. Please try again.');
       }
     } catch (err) {
-      setError('Something went wrong. Please try again.');
+      console.error('Login error:', err);
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -36,15 +32,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700 py-12 px-4 sm:px-6 lg:px-8">
-      {/* Background Pattern */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white opacity-10 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Login Card */}
       <div className="relative max-w-md w-full">
-        {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-4 transform hover:scale-110 transition-transform">
             <svg className="w-12 h-12 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +52,6 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Login Form Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8 transform hover:scale-105 transition-transform duration-300">
           <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
             Welcome Back! 👋
@@ -72,7 +64,6 @@ const Login = () => {
           />
         </div>
 
-        {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-blue-100">
             © 2026 Library Management System. All rights reserved.

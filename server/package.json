@@ -16,5 +16,10 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",
     "nodemon": "^3.1.11"
-  }
+  },
+  "description": "```",
+  "main": "server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

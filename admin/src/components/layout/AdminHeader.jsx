@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Menu, X, Bell, User, LogOut, Settings, Download, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const AdminHeader = ({ onAddBook, onExportCSV, totalBooks = 0 }) => {
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -13,6 +15,19 @@ const AdminHeader = ({ onAddBook, onExportCSV, totalBooks = 0 }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // LOGOUT HANDLER - FIXED
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      localStorage.removeItem("libraryAdmin");
+      window.location.href = '/login';
+    }
+  };
+
+  // SETTINGS HANDLER
+  const handleSettings = () => {
+    navigate('/settings');
+  };
 
   return (
     <header 
@@ -109,23 +124,43 @@ const AdminHeader = ({ onAddBook, onExportCSV, totalBooks = 0 }) => {
 
               {/* Profile Dropdown */}
               {profileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-2">
-                  <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900">Admin User</p>
-                    <p className="text-xs text-gray-600">admin@ieslibrary.edu</p>
-                  </div>
+                <>
+                  {/* Click outside to close */}
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setProfileMenuOpen(false)}
+                  ></div>
                   
-                  <div className="py-2">
-                    <button className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-indigo-50 transition-colors flex items-center gap-3">
-                      <Settings className="h-4 w-4 text-gray-500" />
-                      Settings
-                    </button>
-                    <button className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3">
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </button>
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-2 z-20">
+                    <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-gray-900">Admin User</p>
+                      <p className="text-xs text-gray-600">admin@ieslibrary.edu</p>
+                    </div>
+                    
+                    <div className="py-2">
+                      <button 
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleSettings();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-indigo-50 transition-colors flex items-center gap-3"
+                      >
+                        <Settings className="h-4 w-4 text-gray-500" />
+                        Settings
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -168,12 +203,24 @@ const AdminHeader = ({ onAddBook, onExportCSV, totalBooks = 0 }) => {
               Export CSV
             </button>
 
-            <button className="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
+            <button 
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleSettings();
+              }}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
               <Settings className="h-4 w-4" />
               Settings
             </button>
 
-            <button className="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white transition-colors">
+            <button 
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLogout();
+              }}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white transition-colors"
+            >
               <LogOut className="h-4 w-4" />
               Logout
             </button>

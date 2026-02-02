@@ -1,10 +1,6 @@
-import { createContext, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from "../hooks/useAuth";
-
-import { AuthContext } from "../context/Authcontext";
-
-
+import { adminLogout } from '../api/axios'; // ✅ Real API
 
 // Layout Components
 import AdminHeader from '../components/layout/AdminHeader';
@@ -25,23 +21,11 @@ import SearchBar from '../components/common/SearchBar';
 import { useBooks } from '../hooks/useBooks';
 import useBookFilters from '../hooks/useBookFilters';
 
-// Constants
-const CATEGORIES = [
-  'Fiction',
-  'Non-Fiction',
-  'Science',
-  'History',
-  'Biography',
-  'Technology',
-  'Philosophy',
-  'Poetry',
-  'Drama',
-  'Mystery',
-];
+//data
+import { DEPARTMENTS } from '../api/axios';
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
 
   // ===============================
   // DATA HOOKS
@@ -70,19 +54,28 @@ function AdminDashboard() {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // ===============================
   // HANDLERS
   // ===============================
   
   /**
-   * Handle Logout
+   * Handle Logout - REAL BACKEND VERSION
    */
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      logout();
-      navigate('/login');
+      adminLogout(); // 
+      navigate('/login', { replace: true });
     }
+  };
+
+  /**
+   * Handle Settings
+   */
+  const handleSettings = () => {
+    alert('Settings feature coming soon!');
+    // navigate('/settings');
   };
 
   /**
@@ -91,9 +84,7 @@ function AdminDashboard() {
   const handleEditBook = (book) => {
     setSelectedBook(book);
     setIsEditFormOpen(true);
-    setIsAddFormOpen(false); // Close add form if open
-    
-    // Scroll to top smoothly
+    setIsAddFormOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -102,10 +93,8 @@ function AdminDashboard() {
    */
   const handleOpenAddForm = () => {
     setIsAddFormOpen(true);
-    setIsEditFormOpen(false); // Close edit form if open
+    setIsEditFormOpen(false);
     setSelectedBook(null);
-    
-    // Scroll to top smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -124,13 +113,11 @@ function AdminDashboard() {
   const exportCSV = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      'Title,Author,Category,ISBN,Publication Year,Status\n' +
+      'Title,Author,Department,ISBN,Publisher,Edition,Views\n' +
       books
         .map(
           (book) =>
-            `"${book.title}","${book.author}","${book.category}","${book.isbn || ''}","${book.publicationYear || ''}","${
-              book.isAvailable ? 'Available' : 'Unavailable'
-            }"`
+            `"${book.title}","${book.author || ''}","${book.department}","${book.isbn || ''}","${book.publisher || ''}","${book.edition || ''}","${book.views || 0}"`
         )
         .join('\n');
 
@@ -171,7 +158,7 @@ function AdminDashboard() {
   // ===============================
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top Bar with User Info & Logout */}
+      {/* Top Bar with User Info & Menu */}
       <div className="bg-white shadow-sm border-b fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -182,23 +169,68 @@ function AdminDashboard() {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">
-                {user?.name || 'Admin User'}
+                Admin User
               </p>
               <p className="text-xs text-gray-500">Administrator</p>
             </div>
           </div>
           
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span>Logout</span>
-          </button>
+          {/* User Menu Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              </svg>
+              <span>Menu</span>
+            </button>
+
+            {/* Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleSettings();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Settings</span>
+                </button>
+                
+                <div className="border-t border-gray-200 my-1"></div>
+                
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleLogout();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Click outside to close menu */}
+      {showUserMenu && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowUserMenu(false)}
+        ></div>
+      )}
 
       {/* Header */}
       <AdminHeader
@@ -210,17 +242,16 @@ function AdminDashboard() {
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
         
-        {/* Add Book Form (Inline) */}
+        {/* Add Book Form (Inline) -  */}
         <AddBook
           isOpen={isAddFormOpen}
           onClose={() => setIsAddFormOpen(false)}
-          categories={CATEGORIES}
           onBookAdded={async (bookData) => {
             await addBook(bookData);
           }}
         />
 
-        {/* Edit Book Form (Inline) */}
+        {/* Edit Book Form (Inline) -  */}
         <EditBook
           isOpen={isEditFormOpen}
           book={selectedBook}
@@ -228,7 +259,6 @@ function AdminDashboard() {
             setIsEditFormOpen(false);
             setSelectedBook(null);
           }}
-          categories={CATEGORIES}
           onBookUpdated={async (updatedBookData) => {
             await updateBook(updatedBookData);
           }}
@@ -236,17 +266,17 @@ function AdminDashboard() {
 
         {/* Stats */}
         <div className="mb-8">
-          <BookStats books={books} categoriesCount={CATEGORIES.length} />
+          <BookStats books={books} categoriesCount={DEPARTMENTS.length} />
         </div>
 
-        {/* Search */}
+        {/* Search - Using DEPARTMENTS instead of CATEGORIES */}
         <div className="mb-6">
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
-            categories={CATEGORIES}
+            categories={DEPARTMENTS} 
           />
         </div>
 
