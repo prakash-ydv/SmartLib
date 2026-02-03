@@ -1,0 +1,51 @@
+Folder PATH listing
+Volume serial number is BA55-2E17
+C:.
+|   App.jsx
+|   index.css
+|   main.jsx
+|   structure.txt
+|   
++---api
+|       addBookAPI.js
+|       addBookFromSheetAPI.js
+|       axios.js
+|       
++---assets
+|       react.svg
+|       
++---components
+|   +---auth
+|   |       LoginForm.jsx
+|   |       
+|   +---books
+|   |       BookForm.jsx
+|   |       BookStats.jsx
+|   |       BookTable.jsx
+|   |       BookTableRow.jsx
+|   |       
+|   +---common
+|   |       Modal.jsx
+|   |       ProtectedRoute.jsx
+|   |       SearchBar.jsx
+|   |       
+|   \---layout
+|           AdminFooter.jsx
+|           AdminHeader.jsx
+|           
++---context
+|       AddBookContext.jsx
+|       Authcontext.jsx
+|       BookContext.jsx
+|       
++---hooks
+|       useAuth.js
+|       useBookFilters.js
+|       useBooks.js
+|       
+\---pages
+        AddBook.jsx
+        AdminDashboard.jsx
+        EditBook.jsx
+        Login.jsx
+        
