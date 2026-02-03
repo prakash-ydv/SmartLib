@@ -11,7 +11,7 @@ import BookStats from '../components/books/BookStats';
 import BookTable from '../components/books/BookTable';
 
 // Pages
-import AddBook from './Addbook';
+import AddBook from './AddBook';
 import EditBook from './EditBook';
 
 // Common Components
