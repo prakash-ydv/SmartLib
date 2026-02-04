@@ -3,6 +3,6 @@ const deleteRouter = Router();
 
 import deleteBook from "../controllers/delete.book.controller.js";
 
-deleteRouter.delete("/delete/:bookId", deleteBook);
+deleteRouter.delete("/:bookId", deleteBook);
 
 export default deleteRouter;

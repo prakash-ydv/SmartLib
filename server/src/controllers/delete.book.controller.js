@@ -3,11 +3,10 @@ import Book from "../models/book.model.js";
 async function deleteBook(req, res) {
     try {
         const { bookId } = req.params;
-        const book = await Book.findById(bookId);
+        const book = await Book.findByIdAndDelete(bookId);
         if (!book) {
             return res.status(404).json({ message: "Book not found" });
         }
-        await book.remove();
         res.json({ message: "Book deleted successfully" });
     } catch (error) {
         console.error("Error deleting book:", error);
