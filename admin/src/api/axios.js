@@ -113,6 +113,11 @@ export const getAllBooks = async (page = 1, limit = 20) => {
   return await apiCall(`/search/all-books?page=${page}&limit=${limit}`);
 };
 
+export const getUnavailableBooks = async (page = 1, limit = 20) => {
+  console.log(`🔍 Fetching unavailable books: page ${page}, limit ${limit}`);
+  return await apiCall(`/search/unavailable-books?page=${page}&limit=${limit}`);
+};
+
 export const incrementBookViews = async (bookId) => {
   return await apiCall(`/update/book/views/${bookId}`, {
     method: 'PATCH',

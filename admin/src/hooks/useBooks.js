@@ -7,7 +7,8 @@ import {
   deleteBook as apiDeleteBook,
   toggleBookAvailability as apiToggleAvailability,
   getDashboardStats,
-  searchBookByTitle // Import Search API
+  searchBookByTitle,
+  getUnavailableBooks // Import new API
 } from '../api/axios';
 
 export function useBooks() {
@@ -28,15 +29,25 @@ export function useBooks() {
   const [totalItems, setTotalItems] = useState(0);
   const limit = 10; // Fixed limit as per requirement
 
+  // Filter State (Derived from URL or internal state if needed, but for now we pass it to loadBooks)
+  const currentFilter = searchParams.get("filter") || "all";
+
   const loadBooks = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true); // only show loading spinner if not silent
       setError(null);
 
-      console.log(`🔄 Loading books (Page ${page}) ${silent ? '(Silent)' : ''}...`);
+      console.log(`🔄 Loading books (Page ${page}, Filter: ${currentFilter}) ${silent ? '(Silent)' : ''}...`);
+
+      let booksPromise;
+      if (currentFilter === 'unavailable') {
+        booksPromise = getUnavailableBooks(page, limit);
+      } else {
+        booksPromise = getAllBooks(page, limit);
+      }
 
       const [booksResponse, statsResponse] = await Promise.all([
-        getAllBooks(page, limit),
+        booksPromise,
         getDashboardStats()
       ]);
 
@@ -71,7 +82,7 @@ export function useBooks() {
       setLoading(false);
       setBooks([]);
     }
-  }, [refreshTrigger, page]); // Reload when refresh or page changes
+  }, [refreshTrigger, page, currentFilter]); // Reload when refresh, page, or filter changes
 
   useEffect(() => {
     loadBooks();
@@ -79,7 +90,10 @@ export function useBooks() {
 
   const changePage = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      setSearchParams({ page: newPage.toString() });
+      setSearchParams(prev => {
+        prev.set("page", newPage.toString());
+        return prev;
+      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -253,10 +267,20 @@ export function useBooks() {
       const response = await searchBookByTitle(query);
 
       if (response.status === 'success') {
-        console.log('✅ Search results:', response.data.length);
-        setBooks(response.data);
-        // Reset pagination for search results (backend search isn't paginated yet in this endpoint)
-        setTotalItems(response.data.length);
+        let results = response.data;
+
+        // ✅ Client-side filter for availability if active
+        // (Since backend search endpoint returns all matches)
+        if (currentFilter === 'unavailable') {
+          results = results.filter(book => !book.isAvailable);
+        } else if (currentFilter === 'available') { // Future proofing
+          results = results.filter(book => book.isAvailable);
+        }
+
+        console.log(`✅ Search results (${currentFilter}):`, results.length);
+        setBooks(results);
+        // Reset pagination for search results
+        setTotalItems(results.length);
         setTotalPages(1);
       } else {
         setBooks([]);
@@ -286,6 +310,11 @@ export function useBooks() {
     page,
     totalPages,
     totalItems,
-    changePage
+    changePage,
+    // Filter controls
+    currentFilter,
+    setFilter: (filter) => {
+      setSearchParams({ page: "1", filter }); // Reset to page 1 on filter change
+    }
   };
 }

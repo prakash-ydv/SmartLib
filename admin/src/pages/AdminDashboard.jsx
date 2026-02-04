@@ -71,6 +71,8 @@ function AdminDashboard() {
     totalItems,
     changePage,
     searchBooks, // ✅ Added searchBooks
+    currentFilter,
+    setFilter,
   } = useBooks();
 
   const {
@@ -361,6 +363,8 @@ function AdminDashboard() {
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
             categories={DEPARTMENTS}
+            currentFilter={currentFilter}
+            setFilter={setFilter}
           />
         </div>
 
