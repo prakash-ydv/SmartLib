@@ -57,6 +57,7 @@ function AdminDashboard() {
   // ===============================
   const {
     books,
+    stats,
     isLoading,
     error,
     addBook,
@@ -308,7 +309,7 @@ function AdminDashboard() {
 
         {/* Stats Section */}
         <div className="mb-8">
-          <BookStats books={books} categoriesCount={DEPARTMENTS.length} />
+          <BookStats stats={stats} categoriesCount={DEPARTMENTS.length} />
         </div>
 
         {/* Search & Filter Section */}

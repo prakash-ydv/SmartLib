@@ -13,6 +13,7 @@ import adminRouter from "./routes/admin.route.js";
 import searchBookRouter from "./routes/search.book.route.js";
 import updateBookRouter from "./routes/update.book.route.js";
 import deleteBookRouter from "./routes/delete.book.route.js";
+import dashboardRouter from "./routes/dashboard.route.js";
 
 dotenv.config();
 
@@ -32,6 +33,9 @@ app.use("/add", addBookRouter);
 app.use("/search", searchBookRouter);
 app.use("/update", updateBookRouter);
 app.use("/delete", deleteBookRouter);
+app.use("/dashboard", dashboardRouter);
+
+// admin routes
 app.use("/admin", adminRouter);
 
 app.get("/", (req, res) => {

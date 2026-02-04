@@ -6,6 +6,7 @@ import {
   updateBook as apiUpdateBook,
   deleteBook as apiDeleteBook,
   toggleBookAvailability as apiToggleAvailability,
+  getDashboardStats
 } from '../api/axios';
 
 export function useBooks() {
@@ -13,6 +14,7 @@ export function useBooks() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [stats, setStats] = useState({ totalBooks: 0, availableBooks: 0, unavailableBooks: 0 });
 
   // Pagination State
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,17 +34,25 @@ export function useBooks() {
 
       console.log(`🔄 Loading books (Page ${page}) ${silent ? '(Silent)' : ''}...`);
 
-      const response = await getAllBooks(page, limit);
+      const [booksResponse, statsResponse] = await Promise.all([
+        getAllBooks(page, limit),
+        getDashboardStats()
+      ]);
 
-      console.log('📦 API Response:', response);
+      console.log('📦 API Response:', booksResponse);
 
-      if (response?.status === 'success') {
-        let fetchedBooks = response.data || [];
+      // Handle Stats
+      if (statsResponse?.status === 'success') {
+        setStats(statsResponse.data);
+      }
+
+      if (booksResponse?.status === 'success') {
+        let fetchedBooks = booksResponse.data || [];
 
         // Handle pagination metadata
-        if (response.pagination) {
-          setTotalPages(response.pagination.totalPages);
-          setTotalItems(response.pagination.totalItems);
+        if (booksResponse.pagination) {
+          setTotalPages(booksResponse.pagination.totalPages);
+          setTotalItems(booksResponse.pagination.totalItems);
         }
 
         console.log('✅ Loaded', fetchedBooks.length, 'books');
@@ -210,6 +220,7 @@ export function useBooks() {
 
   return {
     books,
+    stats,
     isLoading: loading,
     error,
     addBook,

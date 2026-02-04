@@ -125,6 +125,10 @@ export const deleteBook = async (bookId) => {
   });
 };
 
+export const getDashboardStats = async () => {
+  return await apiCall('/dashboard/stats');
+};
+
 export const toggleBookAvailability = async (bookId) => {
   console.warn('⚠️ Toggle API not implemented');
   return Promise.resolve({
