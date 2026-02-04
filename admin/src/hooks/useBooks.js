@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   getAllBooks,
   addBook as apiAddBook,
@@ -14,7 +15,12 @@ export function useBooks() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Pagination State
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Pagination State - Derived from URL
+  const page = parseInt(searchParams.get("page") || "1", 10);
+
+  // const [page, setPage] = useState(1); // REMOVED local state
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const limit = 10; // Fixed limit as per requirement
@@ -62,7 +68,7 @@ export function useBooks() {
 
   const changePage = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      setPage(newPage);
+      setSearchParams({ page: newPage.toString() });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
