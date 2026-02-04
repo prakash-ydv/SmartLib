@@ -104,7 +104,7 @@ function BookTableRow({ book, onToggleAvailability, onEdit, onDelete }) {
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
             title={book.isAvailable ? "Mark Unavailable" : "Mark Available"}
           >
-            {book.isAvailable ? (
+            {!book.isAvailable ? (
               <EyeOff className="h-4 w-4" />
             ) : (
               <Eye className="h-4 w-4" />

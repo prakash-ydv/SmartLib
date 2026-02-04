@@ -182,7 +182,15 @@ export function useBooks() {
     try {
       console.log('🔄 Toggling availability:', bookId);
 
-      // Optimistic update
+      // Find book to get current status
+      const bookToToggle = books.find(b => (b._id || b.id) === bookId);
+      if (!bookToToggle) {
+        throw new Error('Book not found');
+      }
+
+      const currentStatus = bookToToggle.isAvailable;
+
+      // Optimistic update for Books
       setBooks(prevBooks =>
         prevBooks.map(book =>
           (book._id || book.id) === bookId
@@ -191,7 +199,19 @@ export function useBooks() {
         )
       );
 
-      const response = await apiToggleAvailability(bookId);
+      // Optimistic update for Stats
+      setStats(prevStats => {
+        const isNowAvailable = !currentStatus;
+        return {
+          ...prevStats,
+          availableBooks: prevStats.availableBooks + (isNowAvailable ? 1 : -1),
+          unavailableBooks: prevStats.unavailableBooks + (isNowAvailable ? -1 : 1)
+        };
+      });
+
+      // Pass currentStatus so API knows what to toggle FROM (or TO, depending on impl)
+      // axios expects currentStatus to flip it to !currentStatus
+      const response = await apiToggleAvailability(bookId, currentStatus);
 
       console.log('✅ Availability toggled:', response);
 
@@ -203,7 +223,7 @@ export function useBooks() {
     } catch (err) {
       console.error('❌ Failed to toggle availability:', err);
 
-      // Rollback on error
+      // Rollback on error - Force refresh to reset both books and stats
       setRefreshTrigger(prev => prev + 1);
 
       return {

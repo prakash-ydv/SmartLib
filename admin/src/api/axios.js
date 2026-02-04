@@ -15,6 +15,7 @@ const apiCall = async (endpoint, options = {}) => {
     method: options.method || 'GET',
     headers: headers,
     ...(options.body && { body: JSON.stringify(options.body) }),
+    credentials: 'include', // ✅ Send cookies with request
   };
 
   try {
@@ -129,11 +130,11 @@ export const getDashboardStats = async () => {
   return await apiCall('/dashboard/stats');
 };
 
-export const toggleBookAvailability = async (bookId) => {
-  console.warn('⚠️ Toggle API not implemented');
-  return Promise.resolve({
-    status: 'success',
-    message: 'Toggled (frontend only)'
+export const toggleBookAvailability = async (bookId, currentStatus) => {
+  console.log(`🔄 Toggling availability for ${bookId} to ${!currentStatus}`);
+  return await apiCall(`/update/book/${bookId}`, {
+    method: 'PATCH',
+    body: { isAvailable: !currentStatus },
   });
 };
 
