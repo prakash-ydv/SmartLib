@@ -67,7 +67,7 @@ export default function BookDetails() {
         while (!foundBook && hasMore) {
 
           const res = await fetch(
-            `https://smartlib-xgxi.onrender.com/search/all-books?page=${page}&limit=100`
+            `/api/search/all-books?page=${page}&limit=100`
           );
 
           if (!res.ok) {
