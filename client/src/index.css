@@ -4,6 +4,11 @@
    =========================================== */
 
 @import "tailwindcss";
+/* client/src/index.css */
+
+@import './styles/books.css';  /* ← Add this line */
+
+/* Rest of your existing CSS... */
 
 /* Global Base Styles */
 @layer base {

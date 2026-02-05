@@ -1,6 +1,10 @@
 // src/api/axios.js
 
+<<<<<<< Updated upstream
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL;
+=======
+const VITE_SERVER_URL = 'https://smartlib-xgxi.onrender.com';
+>>>>>>> Stashed changes
 
 // ------------------------------------------------------------------
 // 🌐 MAIN API CALL FUNCTION
@@ -19,7 +23,7 @@ const apiCall = async (endpoint, options = {}) => {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const response = await fetch(`${VITE_SERVER_URL}${endpoint}`, config);
     const data = await response.json();
 
     if (!response.ok) {

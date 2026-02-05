@@ -1,32 +1,58 @@
+// ============================================
+// 🚀 MAIN APP COMPONENT
+// ============================================
+// Location: client/src/App.jsx
+// Purpose: Main app with routing and context
+// ============================================
 
 import "./index.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// Import all enhanced components
+// ============================================
+// 📦 CONTEXT PROVIDER
+// ============================================
+import { BookProvider } from "./context/BookContext";
+
+// ============================================
+// 📄 COMPONENT IMPORTS
+// ============================================
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import LibraryAdmin from "./pages/Adminpanel";
 import HomePage from "./pages/HomePage";
 import BookDetails from "./components/BookDetails";
-import Footer from "./components/Footer";
 
+// ============================================
+// 🎨 MAIN APP
+// ============================================
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <Header />
+    // ✅ Wrap everything with BookProvider
+    // This makes book data available to all components
+    <BookProvider>
+      <BrowserRouter>
+        <div className="min-h-screen bg-gray-50">
+          
+          {/* Header - Always visible */}
+          <Header />
 
-        <Routes>
-          <Route path="/" element={<HomePage />} />
+          {/* Routes - Different pages */}
+          <Routes>
+            {/* Home Page - Book list */}
+            <Route path="/" element={<HomePage />} />
 
-          {/* Book Details Page */}
-          <Route path="/book/:id" element={<BookDetails />} />
+            {/* Book Details Page - Single book view */}
+            <Route path="/book/:id" element={<BookDetails />} />
 
-          <Route path="/admin" element={<LibraryAdmin />} />
-        </Routes>
+            {/* Admin Panel - Management */}
+            <Route path="/admin" element={<LibraryAdmin />} />
+          </Routes>
 
-        <Footer />
-      </div>
-    </BrowserRouter>
+          {/* Footer - Always visible */}
+          <Footer />
+        </div>
+      </BrowserRouter>
+    </BookProvider>
   );
 }
 

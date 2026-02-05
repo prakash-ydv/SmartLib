@@ -28,9 +28,9 @@ const branchColors = {
 // Helper function to get branch color
 const getBranchColor = (department) => {
   if (!department) return branchColors.general;
-  
+
   const deptLower = department.toLowerCase();
-  
+
   // Match department to color scheme
   if (deptLower.includes('agriculture') || deptLower.includes('agri')) return branchColors.agriculture;
   if (deptLower.includes('mechanical') || deptLower.includes('mech')) return branchColors.mechanical;
@@ -40,7 +40,7 @@ const getBranchColor = (department) => {
   if (deptLower.includes('electronics') || deptLower.includes('ece') || deptLower.includes('etc')) return branchColors.electronics;
   if (deptLower.includes('bio')) return branchColors.biotechnology;
   if (deptLower.includes('chemical')) return branchColors.chemical;
-  
+
   return branchColors.general;
 };
 
@@ -60,29 +60,63 @@ export default function BookDetails() {
       try {
         setIsLoading(true);
 
-        const res = await fetch(`http://localhost:8080/api/books/${id}`);
+        let foundBook = null;
+        let page = 1;
+        let hasMore = true;
 
-        if (!res.ok) {
-          console.error("API Error: Book not found");
+        while (!foundBook && hasMore) {
+
+          const res = await fetch(
+            `https://smartlib-xgxi.onrender.com/search/all-books?page=${page}&limit=100`
+          );
+
+          if (!res.ok) {
+            console.error("API Error");
+            break;
+          }
+
+          const result = await res.json();
+
+          const books =
+            Array.isArray(result)
+              ? result
+              : result.data || [];
+
+          if (books.length === 0) {
+            hasMore = false;
+            break;
+          }
+
+          foundBook = books.find(
+            (book) => book._id === id
+          );
+
+          page++;
+
+          if (page > 50) break;
+        }
+
+        if (!foundBook) {
+          console.error("Book not found");
           setBook(null);
-          setIsLoading(false);
           return;
         }
 
-        const data = await res.json();
-
-        // Backend data ko frontend format mein map karo
         const mappedBook = {
-          _id: data._id,
-          title: data.title,
-          author: data.author,
-          publisher: data.publisher,
-          branch: data.department,    // department → branch
-          genre: data.subject,        // subject → genre
-          accNo: data["Acc no"]?.[""] || data["Acc no"] || "N/A"  // Handle accession number
+          _id: foundBook._id,
+          title: foundBook.title,
+          author: foundBook.author,
+          publisher: foundBook.publisher,
+          branch: foundBook.department,
+          genre: foundBook.subject,
+          accNo: foundBook["Acc no"] || foundBook.accNo || "N/A",
+
+          // ✅ CORRECT IMAGE FIELD
+          image: foundBook.cover_url || ""
         };
 
-        console.log("✅ Backend Response:", data);
+
+        console.log("✅ Backend Response:", foundBook);
         console.log("✅ Mapped Book:", mappedBook);
 
         setBook(mappedBook);
@@ -138,7 +172,7 @@ export default function BookDetails() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Back Button */}
         <div className="mb-6">
           <button
@@ -152,7 +186,7 @@ export default function BookDetails() {
 
         {/* Book Details */}
         <div className="grid lg:grid-cols-3 gap-8 mb-12">
-          
+
           {/* Book Cover */}
           <div className="lg:col-span-1">
             <div className="sticky top-24">
@@ -161,7 +195,16 @@ export default function BookDetails() {
                 <div className={`h-2 bg-gradient-to-r ${branchStyle.bg}`}></div>
                 <div className={`aspect-[3/4] relative bg-gradient-to-br ${branchStyle.bg} flex items-center justify-center`}>
                   {/* Book Icon */}
-                  <BookOpen className="h-32 w-32 text-white drop-shadow-2xl" />
+                  {book.image ? (
+                    <img
+                      src={book.image}
+                      alt={book.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <BookOpen className="h-32 w-32 text-white drop-shadow-2xl" />
+                  )}
+
 
                   {/* Branch Badge */}
                   <div className="absolute top-4 left-4 px-3 py-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold rounded-lg">
@@ -177,13 +220,12 @@ export default function BookDetails() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-6 w-6 ${
-                            i < Math.floor(staticRating)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : i < staticRating
+                          className={`h-6 w-6 ${i < Math.floor(staticRating)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : i < staticRating
                               ? "fill-yellow-200 text-yellow-400"
                               : "text-gray-300"
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -207,7 +249,7 @@ export default function BookDetails() {
 
           {/* Book Information */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Header */}
             <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-6">
               <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -235,7 +277,7 @@ export default function BookDetails() {
                 Book Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
                     <User className="h-3 w-3" />
@@ -296,7 +338,7 @@ export default function BookDetails() {
                     How to Borrow This Book
                   </h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Visit the library with your student ID card to check availability and issue this book. 
+                    Visit the library with your student ID card to check availability and issue this book.
                     Our librarians will be happy to assist you during library hours.
                   </p>
                 </div>
