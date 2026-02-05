@@ -1,47 +1,60 @@
 // ============================================
-// 🏠 HOME PAGE - SIMPLIFIED & WORKING
-// ============================================
-// Location: client/src/pages/HomePage.jsx
-// Purpose: Main page - displays all books
+// 🏠 HOME PAGE - MOBILE-FIRST OPTIMIZED
 // ============================================
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ============================================
-// 📦 CONTEXT
-// ============================================
+// Context
 import { useBooks } from "../context/BookContext";
 
-// ============================================
-// 📄 COMPONENTS (Already exist in your project)
-// ============================================
+// Components
+
 import Hero from "../components/Hero";
-import EnhancedSearchFilter from "../components/EnhancedSearchFilter";
+import SearchBar from "../components/SearchBar";
+import FilterPanel from "../components/FilterPanel";
 import BookCard from "../components/BookCard";
 import Pagination from "../components/Pagination";
-import LoadingSkeleton from "../components/LoadingSkeleton";
+
+// ============================================
+// 📦 LOADING SPINNER COMPONENT
+// ============================================
+const LoadingSpinner = ({ size = "md", message }) => {
+  const sizes = {
+    sm: "h-8 w-8",
+    md: "h-12 w-12",
+    lg: "h-16 w-16"
+  };
+
+  return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center px-4">
+      <div className={`${sizes[size]} animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent mb-4`} />
+      {message && (
+        <p className="text-base md:text-lg text-gray-600 font-medium text-center max-w-md">
+          {message}
+        </p>
+      )}
+    </div>
+  );
+};
 
 // ============================================
 // 🏠 HOME PAGE COMPONENT
 // ============================================
 function HomePage() {
   const navigate = useNavigate();
+  const booksGridRef = useRef(null);
 
-  // --------------------------------------------
-  // 📦 GET DATA FROM CONTEXT
-  // --------------------------------------------
+  // Context
   const {
-    allBooks,         // All books array from backend
-    loading,          // Loading state
-    error,            // Error message
-    fetchAllBooks,    // Function to load books
-    refreshBooks,     // Manual refresh function
+    allBooks,
+    loading,
+    error,
+    fetchAllBooks,
+    refreshBooks,
   } = useBooks();
 
-  // --------------------------------------------
-  // 📊 LOCAL STATE
-  // --------------------------------------------
+  // Local State
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     branch: "all",
@@ -52,23 +65,21 @@ function HomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(24);
 
-  // --------------------------------------------
+  // ============================================
   // 🔄 INITIAL DATA LOAD
-  // --------------------------------------------
+  // ============================================
   useEffect(() => {
-    console.log("📚 HomePage: Loading books from backend...");
+    console.log("📚 HomePage: Loading books...");
     fetchAllBooks();
   }, [fetchAllBooks]);
 
-  // --------------------------------------------
+  // ============================================
   // 🔍 FILTER BOOKS (Client-side)
-  // --------------------------------------------
+  // ============================================
   const filteredBooks = useMemo(() => {
-    console.log(`🔍 Filtering ${allBooks.length} books...`);
-    
     let result = [...allBooks];
 
-    // 1. Search filter (title, author, ISBN, publisher)
+    // Search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       result = result.filter(
@@ -80,14 +91,14 @@ function HomePage() {
       );
     }
 
-    // 2. Department filter
+    // Department filter
     if (filters.branch !== "all") {
       result = result.filter(
         (book) => book.department?.toUpperCase() === filters.branch.toUpperCase()
       );
     }
 
-    // 3. Availability filter
+    // Availability filter
     if (filters.availability !== "all") {
       const isAvailable = filters.availability === "available";
       result = result.filter((book) => {
@@ -96,13 +107,12 @@ function HomePage() {
       });
     }
 
-    console.log(`✅ Filtered to ${result.length} books`);
     return result;
   }, [allBooks, searchTerm, filters]);
 
-  // --------------------------------------------
-  // 📄 PAGINATION (Client-side)
-  // --------------------------------------------
+  // ============================================
+  // 📄 PAGINATION
+  // ============================================
   const paginatedBooks = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -111,9 +121,9 @@ function HomePage() {
 
   const totalPages = Math.ceil(filteredBooks.length / itemsPerPage) || 1;
 
-  // --------------------------------------------
+  // ============================================
   // 📊 STATISTICS
-  // --------------------------------------------
+  // ============================================
   const stats = useMemo(
     () => ({
       total: allBooks.length,
@@ -125,27 +135,21 @@ function HomePage() {
     [allBooks, filteredBooks]
   );
 
-  // --------------------------------------------
+  // ============================================
   // 🎯 EVENT HANDLERS
-  // --------------------------------------------
+  // ============================================
 
-  // Handle search term change
   const handleSearchChange = (value) => {
-    console.log(`🔍 Search: "${value}"`);
     setSearchTerm(value);
-    setCurrentPage(1); // Reset to page 1
+    setCurrentPage(1);
   };
 
-  // Handle filter change
   const handleFilterChange = (newFilters) => {
-    console.log("🎛️ Filters changed:", newFilters);
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to page 1
+    setCurrentPage(1);
   };
 
-  // Handle reset
   const handleReset = () => {
-    console.log("🔄 Resetting all filters");
     setSearchTerm("");
     setFilters({
       branch: "all",
@@ -156,54 +160,57 @@ function HomePage() {
     setCurrentPage(1);
   };
 
-  // Handle page change
   const handlePageChange = (page) => {
-    console.log(`📄 Page changed to: ${page}`);
     setCurrentPage(page);
-    window.scrollTo({ top: 400, behavior: "smooth" });
+
+    // Smart scroll to grid top
+    if (booksGridRef.current) {
+      const headerOffset = 100; // Account for fixed header
+      const elementPosition = booksGridRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
   };
 
-  // Handle items per page change
   const handleItemsPerPageChange = (newItemsPerPage) => {
-    console.log(`📊 Items per page: ${newItemsPerPage}`);
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
   };
 
-  // Handle book click
   const handleBookClick = (bookId) => {
-    console.log(`📖 Book clicked: ${bookId}`);
     navigate(`/book/${bookId}`);
   };
 
-  // Handle refresh
   const handleRefresh = () => {
-    console.log("🔄 Manual refresh triggered");
     refreshBooks();
   };
 
-  // --------------------------------------------
+  // ============================================
   // ❌ ERROR STATE
-  // --------------------------------------------
+  // ============================================
   if (error && !loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <div className="text-5xl md:text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
             Failed to Load Books
           </h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <div className="flex gap-4 justify-center">
+          <p className="text-sm md:text-base text-gray-600 mb-6">{error}</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={handleRefresh}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold min-h-[44px]"
             >
               🔄 Try Again
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold min-h-[44px]"
             >
               Reload Page
             </button>
@@ -213,66 +220,85 @@ function HomePage() {
     );
   }
 
-  // --------------------------------------------
+  // ============================================
   // 🎨 MAIN RENDER
-  // --------------------------------------------
+  // ============================================
   return (
     <>
       {/* Hero Section */}
       <Hero />
 
-      {/* Main Container */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-8 max-w-[1800px] mx-auto">
-        
+      {/* Main Container - Mobile First */}
+      <div className="container-custom section-padding">
+
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
               📚 SmartLib Catalog
             </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              {loading
+            <p className="text-sm md:text-base text-gray-600">
+              {loading && allBooks.length === 0
                 ? "Loading books from database..."
                 : `Browse ${stats.total.toLocaleString()} books from our collection`}
             </p>
           </div>
-          
+
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm disabled:bg-gray-400 disabled:cursor-not-allowed min-h-[44px] flex items-center gap-2 shrink-0"
           >
-            {loading ? "⏳ Loading..." : "🔄 Refresh"}
+            {loading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" />
+                <span className="hidden sm:inline">Loading...</span>
+              </>
+            ) : (
+              <>
+                <span>🔄</span>
+                <span className="hidden sm:inline">Refresh</span>
+              </>
+            )}
           </button>
         </div>
 
         {/* Search & Filter Section */}
-        <EnhancedSearchFilter
-          searchTerm={searchTerm}
-          setSearchTerm={handleSearchChange}
-          filters={filters}
-          setFilters={handleFilterChange}
-          stats={stats}
-          onReset={handleReset}
-        />
+        <div className="space-y-4">
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={handleSearchChange}
+          />
+
+          <FilterPanel
+            filters={filters}
+            setFilters={handleFilterChange}
+            stats={stats}
+            onReset={handleReset}
+          />
+        </div>
 
         {/* Books Section */}
-        <div className="mt-8 sm:mt-12">
-          
-          {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-1.5 sm:w-2 h-6 sm:h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
-              Library Catalog
-            </h2>
-            
-            <div className="flex items-center gap-4">
-              <div className="text-xs sm:text-sm text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
-                {totalPages > 0
-                  ? `Page ${currentPage} of ${totalPages}`
-                  : "No pages"}
+        <div className="mt-8 md:mt-12" ref={booksGridRef}>
+
+          {/* Section Header - Mobile Optimized */}
+          <div className="flex flex-col gap-4 mb-6 md:mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 md:w-2 h-6 md:h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shrink-0" />
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
+                Library Catalog
+              </h2>
+            </div>
+
+            {/* Stats Row - Mobile Friendly */}
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              <div className="text-xs md:text-sm text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
+                {totalPages > 0 ? `Page ${currentPage} of ${totalPages}` : "No pages"}
               </div>
-              <div className="text-xs sm:text-sm text-gray-600 font-medium bg-green-100 px-3 py-1.5 rounded-lg">
+              <div className="text-xs md:text-sm text-gray-600 font-medium bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg">
+                {stats.showing} Showing
+              </div>
+              <div className="text-xs md:text-sm text-gray-600 font-medium bg-green-100 text-green-700 px-3 py-1.5 rounded-lg">
                 {stats.available} Available
               </div>
             </div>
@@ -280,22 +306,16 @@ function HomePage() {
 
           {/* Content Area */}
           {loading && allBooks.length === 0 ? (
-            // ⏳ Initial Loading State
-            <div className="min-h-[50vh] flex items-center justify-center">
-              <div className="text-center">
-                <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent mb-4"></div>
-                <p className="text-lg text-gray-600 font-medium">
-                  Loading books from MongoDB Atlas...
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Using workaround to fetch all books
-                </p>
-              </div>
-            </div>
+            // ⏳ Initial Loading
+            <LoadingSpinner
+              size="lg"
+              message="Loading books from MongoDB Atlas..."
+            />
+
           ) : paginatedBooks.length > 0 ? (
             <>
-              {/* 📚 Books Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* 📚 Books Grid - Mobile First */}
+              <div className="books-grid mb-8 md:mb-12">
                 {paginatedBooks.map((book) => (
                   <BookCard
                     key={book._id || book.id}
@@ -316,11 +336,11 @@ function HomePage() {
               />
             </>
           ) : (
-            // 📭 Empty State
-            <div className="text-center py-12 sm:py-20 px-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full mb-4 sm:mb-6">
+            // 📭 Empty State - Mobile Optimized
+            <div className="text-center py-12 md:py-20 px-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-full mb-4 md:mb-6">
                 <svg
-                  className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400"
+                  className="w-8 h-8 md:w-10 md:h-10 text-gray-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -333,10 +353,10 @@ function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-2">
+              <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 mb-2">
                 No books found
               </h3>
-              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
+              <p className="text-sm md:text-base text-gray-600 mb-6 max-w-md mx-auto">
                 {allBooks.length === 0
                   ? "No books available in the library database"
                   : "Try adjusting your search or filters"}
@@ -344,7 +364,7 @@ function HomePage() {
               {allBooks.length > 0 && (
                 <button
                   onClick={handleReset}
-                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm sm:text-base"
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm md:text-base min-h-[44px]"
                 >
                   Clear All Filters
                 </button>

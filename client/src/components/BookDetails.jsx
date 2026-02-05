@@ -1,354 +1,372 @@
-// src/components/BookDetails.jsx - COMPLETE FIXED VERSION
-import React, { useState, useEffect } from "react";
-import {
-  ArrowLeft,
-  Star,
+// ============================================
+// 📖 BOOK DETAIL PAGE - PRODUCTION READY
+// Mobile-First | Accessible | Optimized
+// ============================================
+
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  Book, 
+  User, 
+  Hash, 
+  Building2, 
+  Calendar, 
+  Eye, 
+  Copy,
+  Heart,
   BookOpen,
-  User,
-  Hash,
-  Loader2,
-  Building2,
-  Tag,
+  AlertCircle
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
 
-// Branch color mappings (department-based)
-const branchColors = {
-  agriculture: { bg: 'from-green-500 to-emerald-500', text: 'text-green-600' },
-  mechanical: { bg: 'from-red-500 to-orange-500', text: 'text-red-600' },
-  civil: { bg: 'from-yellow-500 to-orange-500', text: 'text-yellow-600' },
-  electrical: { bg: 'from-purple-500 to-pink-500', text: 'text-purple-600' },
-  computer: { bg: 'from-blue-500 to-cyan-500', text: 'text-blue-600' },
-  electronics: { bg: 'from-indigo-500 to-purple-500', text: 'text-indigo-600' },
-  biotechnology: { bg: 'from-teal-500 to-green-500', text: 'text-teal-600' },
-  chemical: { bg: 'from-orange-500 to-red-500', text: 'text-orange-600' },
-  general: { bg: 'from-gray-500 to-slate-500', text: 'text-gray-600' }
-};
+// API imports (make sure these exist!)
+import { getBookById, updateBookViews } from "../api/bookAPI";
 
-// Helper function to get branch color
-const getBranchColor = (department) => {
-  if (!department) return branchColors.general;
+// ============================================
+// 🎨 LOADING SKELETON COMPONENT
+// ============================================
+const BookDetailSkeleton = () => (
+  <div className="container-custom section-padding">
+    <div className="mb-6">
+      <div className="h-10 w-32 bg-gray-200 rounded-lg skeleton" />
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+      {/* Image Skeleton */}
+      <div className="md:col-span-1">
+        <div className="aspect-[3/4] bg-gray-200 rounded-xl skeleton" />
+      </div>
+      
+      {/* Info Skeleton */}
+      <div className="md:col-span-2 space-y-4">
+        <div className="h-8 bg-gray-200 rounded-lg skeleton" />
+        <div className="h-6 w-3/4 bg-gray-200 rounded-lg skeleton" />
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-16 bg-gray-200 rounded-lg skeleton" />
+          ))}
+        </div>
+        <div className="h-32 bg-gray-200 rounded-lg skeleton" />
+      </div>
+    </div>
+  </div>
+);
 
-  const deptLower = department.toLowerCase();
-
-  // Match department to color scheme
-  if (deptLower.includes('agriculture') || deptLower.includes('agri')) return branchColors.agriculture;
-  if (deptLower.includes('mechanical') || deptLower.includes('mech')) return branchColors.mechanical;
-  if (deptLower.includes('civil')) return branchColors.civil;
-  if (deptLower.includes('electrical') || deptLower.includes('eee')) return branchColors.electrical;
-  if (deptLower.includes('computer') || deptLower.includes('cs') || deptLower.includes('it')) return branchColors.computer;
-  if (deptLower.includes('electronics') || deptLower.includes('ece') || deptLower.includes('etc')) return branchColors.electronics;
-  if (deptLower.includes('bio')) return branchColors.biotechnology;
-  if (deptLower.includes('chemical')) return branchColors.chemical;
-
-  return branchColors.general;
-};
-
-export default function BookDetails() {
+// ============================================
+// 📖 BOOK DETAIL PAGE
+// ============================================
+export default function BookDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  // State
   const [book, setBook] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
-  // Static rating for display (decoration purpose)
-  const staticRating = 4.5;
-
-  // Load book data from backend
+  // Fetch book on mount
   useEffect(() => {
-    const fetchBook = async () => {
-      try {
-        setIsLoading(true);
-
-        let foundBook = null;
-        let page = 1;
-        let hasMore = true;
-
-        while (!foundBook && hasMore) {
-
-          const res = await fetch(
-            `/api/search/all-books?page=${page}&limit=100`
-          );
-
-          if (!res.ok) {
-            console.error("API Error");
-            break;
-          }
-
-          const result = await res.json();
-
-          const books =
-            Array.isArray(result)
-              ? result
-              : result.data || [];
-
-          if (books.length === 0) {
-            hasMore = false;
-            break;
-          }
-
-          foundBook = books.find(
-            (book) => book._id === id
-          );
-
-          page++;
-
-          if (page > 50) break;
-        }
-
-        if (!foundBook) {
-          console.error("Book not found");
-          setBook(null);
-          return;
-        }
-
-        const mappedBook = {
-          _id: foundBook._id,
-          title: foundBook.title,
-          author: foundBook.author,
-          publisher: foundBook.publisher,
-          branch: foundBook.department,
-          genre: foundBook.subject,
-          accNo: foundBook["Acc no"] || foundBook.accNo || "N/A",
-
-          // ✅ CORRECT IMAGE FIELD
-          image: foundBook.cover_url || ""
-        };
-
-
-        console.log("✅ Backend Response:", foundBook);
-        console.log("✅ Mapped Book:", mappedBook);
-
-        setBook(mappedBook);
-
-      } catch (error) {
-        console.error("❌ Failed to fetch book:", error);
-        setBook(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (id) fetchBook();
+    fetchBookDetail();
   }, [id]);
 
-  // Loading State
-  if (isLoading) {
+  // Fetch book details
+  const fetchBookDetail = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fix: Space between await and function
+      const bookData = await getBookById(id);
+      setBook(bookData);
+
+      // Update view count (non-blocking)
+      updateBookViews(id).catch((err) => {
+        console.log("View count update failed:", err);
+      });
+    } catch (err) {
+      setError(err.message || "Failed to load book details");
+      console.error("Error fetching book:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle back navigation
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+
+  // Handle image error
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // ============================================
+  // 🎨 LOADING STATE
+  // ============================================
+  if (loading) {
+    return <BookDetailSkeleton />;
+  }
+
+  // ============================================
+  // ❌ ERROR STATE
+  // ============================================
+  if (error) {
     return (
-      <div className="min-h-[60vh] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 text-indigo-600 mx-auto mb-4 animate-spin" />
-          <p className="text-lg text-gray-600">Loading book details...</p>
+      <div className="container-custom section-padding">
+        <div className="min-h-[60vh] flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-red-100 rounded-full mb-4 md:mb-6">
+              <AlertCircle className="w-8 h-8 md:w-10 md:h-10 text-red-600" />
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+              Failed to Load Book
+            </h2>
+            <p className="text-sm md:text-base text-gray-600 mb-6">{error}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={handleGoBack}
+                className="btn btn-secondary"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Go Back
+              </button>
+              <button
+                onClick={fetchBookDetail}
+                className="btn btn-primary"
+              >
+                🔄 Try Again
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Not Found State
+  // ============================================
+  // 📭 EMPTY STATE
+  // ============================================
   if (!book) {
     return (
-      <div className="min-h-[60vh] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center px-4">
-          <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Book not found
-          </h1>
-          <p className="text-gray-600 mb-6">
-            The book you're looking for doesn't exist or has been removed.
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
-          >
-            Return to Catalog
-          </button>
+      <div className="container-custom section-padding">
+        <div className="min-h-[60vh] flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <div className="text-5xl md:text-6xl mb-4">📭</div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+              Book Not Found
+            </h2>
+            <p className="text-sm md:text-base text-gray-600 mb-6">
+              The book you're looking for doesn't exist or has been removed.
+            </p>
+            <button
+              onClick={handleGoBack}
+              className="btn btn-primary"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Catalog
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const branchStyle = getBranchColor(book.branch);
-
+  // ============================================
+  // 📚 BOOK DETAILS RENDER
+  // ============================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container-custom section-padding">
+      
+      {/* Back Button - Mobile Friendly */}
+      <button
+        onClick={handleGoBack}
+        className="inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 hover:text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-all mb-6 min-h-[44px] focus-ring"
+        aria-label="Go back to previous page"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span>Back</span>
+      </button>
 
-        {/* Back Button */}
-        <div className="mb-6">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all font-medium"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Catalog
-          </button>
-        </div>
-
-        {/* Book Details */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-12">
-
-          {/* Book Cover */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24">
-              {/* Book Cover Card */}
-              <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-                <div className={`h-2 bg-gradient-to-r ${branchStyle.bg}`}></div>
-                <div className={`aspect-[3/4] relative bg-gradient-to-br ${branchStyle.bg} flex items-center justify-center`}>
-                  {/* Book Icon */}
-                  {book.image ? (
-                    <img
-                      src={book.image}
-                      alt={book.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <BookOpen className="h-32 w-32 text-white drop-shadow-2xl" />
-                  )}
-
-
-                  {/* Branch Badge */}
-                  <div className="absolute top-4 left-4 px-3 py-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold rounded-lg">
-                    {book.branch}
+      {/* Main Content - Mobile First Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-12">
+        
+        {/* ============================================ */}
+        {/* 📸 BOOK COVER SECTION */}
+        {/* ============================================ */}
+        <div className="md:col-span-1">
+          <div className="sticky top-24">
+            {/* Book Cover */}
+            <div className="relative group">
+              <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden shadow-xl">
+                {!imageError ? (
+                  <img
+                    src={book.cover_url || "/placeholder-book.png"}
+                    alt={`Cover of ${book.title}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={handleImageError}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                    <Book className="h-16 w-16 text-gray-400 mb-3" />
+                    <p className="text-sm text-gray-500 font-medium">
+                      {book.title}
+                    </p>
                   </div>
-                </div>
-
-                {/* Stats Section */}
-                <div className="p-6 space-y-4">
-                  {/* Static Star Rating Display */}
-                  <div className="text-center py-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-200">
-                    <div className="flex items-center justify-center space-x-1 mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-6 w-6 ${i < Math.floor(staticRating)
-                            ? "fill-yellow-400 text-yellow-400"
-                            : i < staticRating
-                              ? "fill-yellow-200 text-yellow-400"
-                              : "text-gray-300"
-                            }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{staticRating}</p>
-                    <p className="text-xs text-gray-600 mt-1">Library Rating</p>
-                  </div>
-
-                  {/* Accession Number */}
-                  {book.accNo && book.accNo !== "N/A" && (
-                    <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        Accession No.
-                      </label>
-                      <p className="text-gray-900 font-bold mt-1 font-mono text-lg">{book.accNo}</p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
+
+              {/* Availability Badge */}
+              <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
+                book.isAvailable || (book.copies && book.copies.length > 0)
+                  ? "bg-green-500/90 text-white"
+                  : "bg-red-500/90 text-white"
+              }`}>
+                {book.isAvailable || (book.copies && book.copies.length > 0)
+                  ? "✓ Available"
+                  : "✗ Not Available"}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {book.views !== undefined && (
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-3 text-center border border-indigo-100">
+                  <Eye className="h-5 w-5 text-indigo-600 mx-auto mb-1" />
+                  <p className="text-sm text-gray-600 font-medium">Views</p>
+                  <p className="text-lg font-bold text-gray-900">{book.views || 0}</p>
+                </div>
+              )}
+              
+              {book.copies && book.copies.length > 0 && (
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 text-center border border-green-100">
+                  <Copy className="h-5 w-5 text-green-600 mx-auto mb-1" />
+                  <p className="text-sm text-gray-600 font-medium">Copies</p>
+                  <p className="text-lg font-bold text-gray-900">{book.copies.length}</p>
+                </div>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Book Information */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* ============================================ */}
+        {/* 📝 BOOK INFORMATION SECTION */}
+        {/* ============================================ */}
+        <div className="md:col-span-2 space-y-6">
+          
+          {/* Title & Author */}
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
+              {book.title}
+            </h1>
+            {book.author && (
+              <p className="flex items-center gap-2 text-base md:text-lg text-gray-600">
+                <User className="h-5 w-5" aria-hidden="true" />
+                <span>by <strong>{book.author}</strong></span>
+              </p>
+            )}
+          </div>
 
-            {/* Header */}
-            <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-6">
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className={`px-3 py-1.5 bg-gradient-to-r ${branchStyle.bg} text-white rounded-full text-sm font-bold`}>
-                  {book.genre}
-                </span>
+          {/* Metadata Grid - Mobile First */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Department */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+              <div className="flex items-center gap-2 mb-1">
+                <Building2 className="h-4 w-4 text-indigo-600" aria-hidden="true" />
+                <span className="text-xs uppercase font-semibold text-gray-500">Department</span>
               </div>
-
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                {book.title}
-              </h1>
-
-              <div className="flex flex-wrap items-center gap-4 text-gray-600">
-                <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
-                  <User className="h-4 w-4 mr-2 text-indigo-600" />
-                  <span className="text-sm font-medium">by {book.author}</span>
-                </div>
-              </div>
+              <p className="text-sm font-bold text-gray-900">{book.department || "N/A"}</p>
             </div>
 
-            {/* Book Metadata Card */}
-            <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-indigo-600" />
-                Book Information
+            {/* ISBN */}
+            {book.isbn && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <Hash className="h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <span className="text-xs uppercase font-semibold text-gray-500">ISBN</span>
+                </div>
+                <p className="text-sm font-mono font-bold text-gray-900">{book.isbn}</p>
+              </div>
+            )}
+
+            {/* Publisher */}
+            {book.publisher && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <BookOpen className="h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <span className="text-xs uppercase font-semibold text-gray-500">Publisher</span>
+                </div>
+                <p className="text-sm font-bold text-gray-900">{book.publisher}</p>
+              </div>
+            )}
+
+            {/* Edition */}
+            {book.edition && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <span className="text-xs uppercase font-semibold text-gray-500">Edition</span>
+                </div>
+                <p className="text-sm font-bold text-gray-900">{book.edition}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Description */}
+          {book.description && (
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <Book className="h-5 w-5 text-indigo-600" />
+                Description
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+                {book.description}
+              </p>
+            </div>
+          )}
 
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    Author
-                  </label>
-                  <p className="text-gray-900 font-medium mt-1">{book.author}</p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                    <Tag className="h-3 w-3" />
-                    Subject
-                  </label>
-                  <p className="text-gray-900 font-medium mt-1">{book.genre}</p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                    <BookOpen className="h-3 w-3" />
-                    Department
-                  </label>
-                  <p className="text-gray-900 font-medium mt-1">{book.branch}</p>
-                </div>
-
-                {book.publisher && (
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
-                      Publisher
-                    </label>
-                    <p className="text-gray-900 font-medium mt-1">{book.publisher}</p>
-                  </div>
-                )}
-
-                {book.accNo && book.accNo !== "N/A" && (
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                      <Hash className="h-3 w-3" />
-                      Accession Number
-                    </label>
-                    <p className="text-gray-900 font-medium mt-1 font-mono text-sm">{book.accNo}</p>
-                  </div>
-                )}
-
+          {/* Copy IDs */}
+          {book.copies && book.copies.length > 0 && (
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <Copy className="h-5 w-5 text-green-600" />
+                Available Copies
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {book.copies.map((copyId, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1.5 bg-green-50 text-green-700 text-xs font-mono font-semibold rounded-lg border border-green-200"
+                  >
+                    {copyId}
+                  </span>
+                ))}
               </div>
             </div>
+          )}
 
-            {/* Library Notice */}
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl shadow-lg border-2 border-indigo-200 p-6">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">
-                    How to Borrow This Book
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    Visit the library with your student ID card to check availability and issue this book.
-                    Our librarians will be happy to assist you during library hours.
-                  </p>
-                </div>
-              </div>
-            </div>
-
+          {/* Action Buttons - Mobile Friendly */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <button 
+              className="btn btn-primary flex-1"
+              onClick={() => alert("Issue book functionality coming soon!")}
+            >
+              <BookOpen className="h-5 w-5" />
+              Issue Book
+            </button>
+            <button 
+              className="btn btn-secondary flex-1"
+              onClick={() => alert("Wishlist functionality coming soon!")}
+            >
+              <Heart className="h-5 w-5" />
+              Add to Wishlist
+            </button>
           </div>
         </div>
-
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,12 +1,10 @@
 // ============================================
-// 🚀 MAIN APP COMPONENT
-// ============================================
-// Location: client/src/App.jsx
-// Purpose: Main app with routing and context
+// 🚀 MAIN APP COMPONENT - OPTIMIZED
 // ============================================
 
 import "./index.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Suspense, lazy } from "react";
 
 // ============================================
 // 📦 CONTEXT PROVIDER
@@ -18,37 +16,85 @@ import { BookProvider } from "./context/BookContext";
 // ============================================
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import LibraryAdmin from "./pages/Adminpanel";
-import HomePage from "./pages/HomePage";
-import BookDetails from "./components/BookDetails";
+
+// Lazy load pages for better performance
+const HomePage = lazy(() => import("./pages/HomePage"));
+const BookDetails = lazy(() => import("./components/BookDetails"));
+const LibraryAdmin = lazy(() => import("./pages/Adminpanel"));
+
+// ============================================
+// 🎨 LOADING COMPONENT
+// ============================================
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+  </div>
+);
+
+// ============================================
+// 🚫 404 NOT FOUND
+// ============================================
+const NotFound = () => (
+  <div className="flex flex-col items-center justify-center min-h-screen px-4">
+    <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
+    <p className="text-xl text-gray-600 mb-8">Page not found</p>
+    <a href="/" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+      Go Home
+    </a>
+  </div>
+);
+
+// ============================================
+// 📜 SCROLL TO TOP COMPONENT
+// ============================================
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 // ============================================
 // 🎨 MAIN APP
 // ============================================
 function App() {
   return (
-    // ✅ Wrap everything with BookProvider
-    // This makes book data available to all components
     <BookProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
+        <ScrollToTop />
+        
+        {/* Flex layout for sticky footer */}
+        <div className="flex flex-col min-h-screen bg-gray-50">
           
           {/* Header - Always visible */}
           <Header />
 
-          {/* Routes - Different pages */}
-          <Routes>
-            {/* Home Page - Book list */}
-            <Route path="/" element={<HomePage />} />
+          {/* Main Content - Grows to push footer down */}
+          <main className="flex-grow">
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                {/* Home Page */}
+                <Route path="/" element={<HomePage />} />
 
-            {/* Book Details Page - Single book view */}
-            <Route path="/book/:id" element={<BookDetails />} />
+                {/* Book Details Page */}
+                <Route path="/book/:id" element={<BookDetails />} />
 
-            {/* Admin Panel - Management */}
-            <Route path="/admin" element={<LibraryAdmin />} />
-          </Routes>
+                {/* Admin Panel */}
+                <Route path="/admin" element={<LibraryAdmin />} />
 
-          {/* Footer - Always visible */}
+                {/* 404 - Catch all routes */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </main>
+
+          {/* Footer - Sticky at bottom */}
           <Footer />
         </div>
       </BrowserRouter>
