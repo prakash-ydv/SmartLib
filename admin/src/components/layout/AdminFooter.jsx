@@ -16,7 +16,7 @@ const AdminFooter = () => {
   return (
     <footer className="bg-gray-900 text-gray-300 mt-auto border-t border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
+        <div className="grid grid-cols-1">
           {/* Brand Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -36,123 +36,6 @@ const AdminFooter = () => {
               Empowering education through efficient library management.
               Streamlining access to knowledge for the IES University community.
             </p>
-          </div>
-
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Platform
-            </h4>
-            <ul className="space-y-3">
-              <li>
-                <a
-                  href="/admin/dashboard"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Dashboard
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/admin/books"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Book Management
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/admin/users"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Member Directory
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/admin/reports"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Analytics & Reports
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Resources
-            </h4>
-            <ul className="space-y-3">
-              <li>
-                <a
-                  href="/help"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/docs"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/status"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  System Status
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/contact"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  Contact Support
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Contact
-            </h4>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                <span className="text-sm">
-                  IES Campus, Knowledge Park
-                  <br />
-                  Bhopal, MP 462001
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                <a
-                  href="mailto:library@ies.edu"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  library@ies.edu
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                <a
-                  href="tel:+919876543210"
-                  className="text-sm hover:text-indigo-400 transition-colors"
-                >
-                  +91 98765 43210
-                </a>
-              </li>
-            </ul>
           </div>
         </div>
 
