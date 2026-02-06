@@ -11,6 +11,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { adminLogout } from "../../api/axios";
 
 const AdminHeader = ({ onAddBook, onExportCSV, totalBooks = 0 }) => {
   const navigate = useNavigate();
@@ -18,10 +19,9 @@ const AdminHeader = ({ onAddBook, onExportCSV, totalBooks = 0 }) => {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   // LOGOUT HANDLER
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("libraryAdmin");
-      window.location.href = "/login";
+      await adminLogout();
     }
   };
 
