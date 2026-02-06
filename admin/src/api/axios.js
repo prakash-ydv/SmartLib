@@ -147,7 +147,7 @@ export const getDashboardStats = async () => {
 
 export const toggleBookAvailability = async (bookId, currentStatus) => {
   console.log(`🔄 Toggling availability for ${bookId} to ${!currentStatus}`);
-  return await apiCall(`/update/book/${bookId}`, {
+  return await apiCall(`/feature/change-visiblity/${bookId}`, {
     method: 'PATCH',
     body: { isAvailable: !currentStatus },
   });
@@ -157,5 +157,5 @@ export const DEPARTMENTS = [
   "CSE", "IT", "ECE", "EEE", "MECH", "CIVIL",
   "MBA", "MCA", "BBA", "BCA", "B.COM", "B.SC",
   "B.PHARM", "B.ARCH", "B.DES", "B.ED", "B.LLB",
-  "B.PT", "B.HM", "B.MS", "B.AS", "B.FA", "B.FT"
+  "B.PT", "B.HM", "B.MS", "B.AS", "B.FA", "B.FT","AGRICULTURE"
 ];
