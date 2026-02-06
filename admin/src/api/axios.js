@@ -51,12 +51,7 @@ export const adminLogin = async (email, password) => {
 
     if (data.status === 'success') {
       console.log("✅ Login Success!");
-
-      // Backend cookie me token bhejta hai
-      // Browser automatically handle karega
-
-      localStorage.setItem('isAdminLoggedIn', 'true');
-      localStorage.setItem('adminData', JSON.stringify(data.data || data));
+      // Token is set in cookie by server
     }
 
     return data;
@@ -66,16 +61,28 @@ export const adminLogin = async (email, password) => {
   }
 };
 
-export const adminLogout = () => {
-  // Sab kuch saaf karo
-  localStorage.removeItem('isAdminLoggedIn');
-  localStorage.removeItem('adminData');
-
-  window.location.reload(); // Page refresh to reset state
+export const adminLogout = async () => {
+  try {
+    await apiCall('/admin/logout', { method: 'POST' });
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+  window.location.replace('/login');
 };
 
-export const isAuthenticated = () => {
-  return localStorage.getItem('isAdminLoggedIn') === 'true';
+export const checkAuth = async () => {
+  try {
+    const data = await apiCall('/admin/me', {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
+    return data.status === 'success';
+  } catch (error) {
+    return false;
+  }
 };
 
 // ------------------------------------------------------------------
@@ -157,5 +164,5 @@ export const DEPARTMENTS = [
   "CSE", "IT", "ECE", "EEE", "MECH", "CIVIL",
   "MBA", "MCA", "BBA", "BCA", "B.COM", "B.SC",
   "B.PHARM", "B.ARCH", "B.DES", "B.ED", "B.LLB",
-  "B.PT", "B.HM", "B.MS", "B.AS", "B.FA", "B.FT","AGRICULTURE"
+  "B.PT", "B.HM", "B.MS", "B.AS", "B.FA", "B.FT", "AGRICULTURE"
 ];
