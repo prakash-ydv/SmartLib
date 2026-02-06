@@ -81,4 +81,34 @@ async function loginAdminRoute(req, res) {
     }
 }
 
-export { createAdminRoute, loginAdminRoute };
+async function getCurrentAdmin(req, res) {
+    try {
+        const adminId = req.adminId;
+        const admin = await adminModel.findById(adminId).select("-password");
+
+        if (!admin) {
+            return res.status(404).json({ status: "failed", message: "Admin not found" });
+        }
+
+        return res.status(200).json({ status: "success", data: admin });
+    } catch (error) {
+        console.log("error in get current admin", error);
+        return res.status(500).json({ status: "failed", message: "Internal server error", error });
+    }
+}
+
+function logoutAdmin(req, res) {
+    try {
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+        });
+        return res.status(200).json({ status: "success", message: "Logged out successfully" });
+    } catch (error) {
+        console.log("error in logout admin", error);
+        return res.status(500).json({ status: "failed", message: "Internal server error", error });
+    }
+}
+
+export { createAdminRoute, loginAdminRoute, getCurrentAdmin, logoutAdmin };
