@@ -21,7 +21,7 @@ dotenv.config();
 // middleware
 app.use(express.json());
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"], // ✅ Specific origin for credentials
+    origin: ["*"],
     credentials: true
 }));
 app.use(cookieParser());
