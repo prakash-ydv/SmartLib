@@ -40,6 +40,7 @@ function AdminDashboard() {
     updateBook,
     deleteBook,
     toggleAvailability,
+    refreshBooks,
     page,
     totalPages,
     totalItems,
@@ -120,6 +121,10 @@ function AdminDashboard() {
     
     // Return result to AddBook component
     return result;
+  };
+
+  const handleBulkUploadComplete = async () => {
+    refreshBooks();
   };
 
   /**
@@ -327,6 +332,7 @@ function AdminDashboard() {
           isOpen={isAddFormOpen}
           onClose={() => setIsAddFormOpen(false)}
           onBookAdded={handleAddBook}
+          onBulkUploaded={handleBulkUploadComplete}
         />
 
         {/* ✅ FIXED: Edit Book Form - Direct callback reference */}

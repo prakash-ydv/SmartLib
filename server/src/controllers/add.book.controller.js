@@ -56,36 +56,43 @@ async function addOneBook(req, res) {
 
 async function addBulkBookFromSheet(req, res) {
     try {
-        // 1. Check if file exists
         if (!req.file) {
-            return res.status(400).json({ message: "Please upload an excel file." });
+            return res.status(400).json({
+                status: "failed",
+                message: "Please upload a CSV or Excel file.",
+            });
         }
 
-        // 2. Parse the buffer from memory (Multer storage)
         const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-
-        // 3. Get the first sheet
         const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
+        if (!sheetName) {
+            return res.status(400).json({
+                status: "failed",
+                message: "Uploaded file does not contain any sheet.",
+            });
+        }
 
-        // 4. Call your conversion and database logic
+        const sheet = workbook.Sheets[sheetName];
         const result = await sheetToJson(sheet);
 
-        // 5. Send Response
-        if (result.success) {
-            return res.status(200).json({
-                message: "Books imported successfully",
-                count: result.count,
-                books: result.result
+        if (!result.success) {
+            return res.status(400).json({
+                status: "failed",
+                message: result.message || "Bulk import failed",
+                report: result,
             });
-        } else {
-            // This handles cases where sheetToJson returned an error object
-            throw result;
         }
 
+        return res.status(200).json({
+            status: "success",
+            message: result.message || "Books imported successfully",
+            count: result.inserted + result.updated,
+            report: result,
+        });
     } catch (error) {
         console.error("Bulk Upload Error:", error);
-        res.status(500).json({
+        return res.status(500).json({
+            status: "failed",
             message: "Failed to process sheet",
             error: error.message
         });

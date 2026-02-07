@@ -153,6 +153,45 @@ export const addBook = async (bookData) => {
   });
 };
 
+// ✅ NEW: Bulk upload function
+export const uploadBulkBooks = async (file) => {
+  console.log("📤 Uploading bulk books...");
+  
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch(`${VITE_SERVER_URL}/add/bulk/upload`, {
+      method: 'POST',
+      body: formData, // ⚠️ NO Content-Type header for multipart
+      credentials: 'include', // ✅ Send cookies
+    });
+
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    
+    if (!isJson) {
+      console.error(`❌ Expected JSON but got ${contentType}`);
+      throw new Error('Server returned invalid response. Check backend logs.');
+    }
+    
+    const data = await response.json();
+
+    if (!response.ok) {
+      const reportErrors = data?.report?.errors;
+      const reportMessage = Array.isArray(reportErrors) && reportErrors.length
+        ? `${data.message || 'Upload failed'}: ${reportErrors[0]}`
+        : (data.message || data.error || 'Upload failed');
+      throw new Error(reportMessage);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('❌ Bulk upload error:', error);
+    throw error;
+  }
+};
+
 export const updateBook = async (bookId, updateData) => {
   console.log("✏️ Updating book...");
   return await apiCall(`/update/book/${bookId}`, {
