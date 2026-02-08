@@ -22,6 +22,7 @@ const DEPARTMENT_ALIASES = {
     EE: "EEE",
     ME: "MECH",
     MECH: "MECH",
+    MECHANICAL: "MECH",
     CIVIL: "CIVIL",
     CE: "CIVIL",
     MBA: "MBA",
@@ -56,6 +57,7 @@ const DEPARTMENT_ALIASES = {
     "B.FT": "B.FT",
     AGRICULTURE: "AGRICULTURE",
     AGRI: "AGRICULTURE",
+    AG: "AGRICULTURE",
 };
 
 function normalizeKey(value) {
@@ -63,7 +65,8 @@ function normalizeKey(value) {
 }
 
 function normalizeDepartment(rawDepartment) {
-    if (!rawDepartment) return "AGRICULTURE";
+    if (!rawDepartment) return null;
+    
     const compact = rawDepartment
         .toString()
         .trim()
@@ -88,14 +91,26 @@ function getValueFromRow(row, field) {
         }
     }
 
-    return undefined;
+    return null;
+}
+
+// ✅ FIX: Properly handle null, undefined, empty strings, and "None" text
+function cleanValue(rawValue) {
+    if (rawValue === null || rawValue === undefined) return null;
+    
+    const stringValue = rawValue.toString().trim();
+    
+    // Handle "None" text from Excel
+    if (stringValue === "" || stringValue.toLowerCase() === "none") return null;
+    
+    return stringValue;
 }
 
 function parseCopies(rawValue) {
-    if (rawValue === undefined || rawValue === null || rawValue === "") return [];
+    const cleaned = cleanValue(rawValue);
+    if (!cleaned) return [];
 
-    return rawValue
-        .toString()
+    return cleaned
         .split(/[;,|]/)
         .map((copy) => copy.trim())
         .filter(Boolean);
@@ -130,7 +145,8 @@ export async function sheetToJson(sheet) {
     const allowedDepartments = new Set(Book.schema.path("department").enumValues);
 
     try {
-        const rawData = xlsx.utils.sheet_to_json(sheet, { defval: "" });
+        // ✅ FIX: Remove defval to properly handle empty cells
+        const rawData = xlsx.utils.sheet_to_json(sheet);
         report.totalRows = rawData.length;
 
         if (!rawData.length) {
@@ -143,7 +159,10 @@ export async function sheetToJson(sheet) {
 
         rawData.forEach((row, index) => {
             const rowNumber = index + 2;
-            const title = getValueFromRow(row, "title")?.toString().trim();
+            
+            // ✅ FIX: Use cleanValue for proper null handling
+            const titleRaw = getValueFromRow(row, "title");
+            const title = cleanValue(titleRaw);
 
             if (!title) {
                 report.skipped += 1;
@@ -152,24 +171,33 @@ export async function sheetToJson(sheet) {
             }
 
             const departmentRaw = getValueFromRow(row, "department");
-            const department = normalizeDepartment(departmentRaw || "AGRICULTURE");
+            const department = normalizeDepartment(departmentRaw);
 
-            if (!allowedDepartments.has(department)) {
+            if (!department || !allowedDepartments.has(department)) {
                 report.skipped += 1;
-                report.errors.push(`Row ${rowNumber}: invalid department "${departmentRaw}"`);
+                report.errors.push(`Row ${rowNumber}: invalid or missing department "${departmentRaw || 'N/A'}"`);
                 return;
             }
 
+            // ✅ FIX: Clean all values and handle ISBN as null instead of undefined
+            const descriptionRaw = getValueFromRow(row, "description");
+            const authorRaw = getValueFromRow(row, "author");
+            const isbnRaw = getValueFromRow(row, "isbn");
+            const publisherRaw = getValueFromRow(row, "publisher");
+            const editionRaw = getValueFromRow(row, "edition");
+            const coverUrlRaw = getValueFromRow(row, "cover_url");
+            const accRaw = getValueFromRow(row, "acc");
+
             const book = {
                 title,
-                description: getValueFromRow(row, "description")?.toString().trim() || "",
-                author: getValueFromRow(row, "author")?.toString().trim() || "Unknown",
+                description: cleanValue(descriptionRaw) || "",
+                author: cleanValue(authorRaw) || "",
                 department,
-                isbn: getValueFromRow(row, "isbn")?.toString().trim() || undefined,
-                publisher: getValueFromRow(row, "publisher")?.toString().trim() || "",
-                edition: getValueFromRow(row, "edition")?.toString().trim() || "",
-                cover_url: getValueFromRow(row, "cover_url")?.toString().trim() || "",
-                copies: parseCopies(getValueFromRow(row, "acc")),
+                isbn: cleanValue(isbnRaw), // ✅ null if empty (sparse index handles it)
+                publisher: cleanValue(publisherRaw) || "",
+                edition: cleanValue(editionRaw) || "",
+                cover_url: cleanValue(coverUrlRaw) || "",
+                copies: parseCopies(accRaw),
             };
 
             const key = title.toLowerCase();
@@ -181,30 +209,35 @@ export async function sheetToJson(sheet) {
             report.validRows += 1;
         });
 
+        // ✅ FIX: Process merged books with better error handling
         for (const book of booksMap.values()) {
             try {
                 const existing = await Book.findOne({ title: book.title });
 
                 if (!existing) {
+                    // ✅ Insert new book
                     await Book.create(book);
                     report.inserted += 1;
                     continue;
                 }
 
+                // ✅ FIX: Handle ISBN conflict properly (both must have ISBN to conflict)
                 if (book.isbn && existing.isbn && book.isbn !== existing.isbn) {
                     report.skipped += 1;
-                    report.errors.push(`Title "${book.title}" skipped: conflicting ISBN`);
+                    report.errors.push(`Title "${book.title}" skipped: conflicting ISBN (existing: ${existing.isbn}, new: ${book.isbn})`);
                     continue;
                 }
 
+                // ✅ Merge copies
                 const mergedCopies = Array.from(
                     new Set([...(existing.copies || []), ...(book.copies || [])])
                 );
 
+                // ✅ FIX: Only update if new data exists (preserve existing data)
                 existing.description = book.description || existing.description;
                 existing.author = book.author || existing.author;
                 existing.department = book.department || existing.department;
-                existing.isbn = existing.isbn || book.isbn;
+                existing.isbn = existing.isbn || book.isbn; // ✅ Keep existing ISBN if present
                 existing.publisher = book.publisher || existing.publisher;
                 existing.edition = book.edition || existing.edition;
                 existing.cover_url = book.cover_url || existing.cover_url;
@@ -215,7 +248,15 @@ export async function sheetToJson(sheet) {
                 report.updated += 1;
             } catch (error) {
                 report.skipped += 1;
-                report.errors.push(`Title "${book.title}": ${error.message}`);
+                
+                // ✅ FIX: Better error messages
+                if (error.code === 11000) {
+                    // Duplicate key error
+                    const field = Object.keys(error.keyPattern || {})[0] || 'unknown';
+                    report.errors.push(`Title "${book.title}": duplicate ${field} value`);
+                } else {
+                    report.errors.push(`Title "${book.title}": ${error.message}`);
+                }
             }
         }
 

@@ -1,21 +1,20 @@
 import router from "express";
 import { searchBookByTitle, searchByViews, searchByPage, searchUnAvailbleBooks,searchBooksWithoutImage } from "../controllers/search.book.controller.js";
-import { isAdminLoggedIn } from "../middlewares/checkAdminLogedIn.js";
 
 const searchBookRouter = router();
 
-searchBookRouter.get("/book",isAdminLoggedIn, searchBookByTitle)
+searchBookRouter.get("/book", searchBookByTitle)
 
 // search book by view count
-searchBookRouter.get("/most-viewed",isAdminLoggedIn, searchByViews)
+searchBookRouter.get("/most-viewed", searchByViews)
 
 // search book by page
-searchBookRouter.get("/all-books",isAdminLoggedIn, searchByPage)
+searchBookRouter.get("/all-books", searchByPage)
 
 // search unavailble books
-searchBookRouter.get("/unavailable-books",isAdminLoggedIn, searchUnAvailbleBooks)
+searchBookRouter.get("/unavailable-books", searchUnAvailbleBooks)
 
 // search books without image
-searchBookRouter.get("/without-image",isAdminLoggedIn, searchBooksWithoutImage)
+searchBookRouter.get("/without-image", searchBooksWithoutImage)
 
 export default searchBookRouter;

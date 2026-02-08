@@ -19,7 +19,8 @@ const bookSchema = new mongoose.Schema({
     },
     isbn: {
         type: String,
-        unique: true
+        unique: true,
+        sparse: true  // ✅ FIX: Allows multiple null/undefined ISBN values
     },
     publisher: {
         type: String,

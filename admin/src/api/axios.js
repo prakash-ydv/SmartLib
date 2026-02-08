@@ -2,6 +2,14 @@ const configuredServerUrl = import.meta.env.VITE_SERVER_URL?.trim();
 const VITE_SERVER_URL = configuredServerUrl || '/api';
 const VERIFY_AUTH_ENDPOINT = import.meta.env.VITE_VERIFY_AUTH_ENDPOINT === 'true';
 
+const getAuthToken = () =>
+  localStorage.getItem('token') || localStorage.getItem('adminToken') || '';
+
+const clearAuthToken = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('adminToken');
+};
+
 // ------------------------------------------------------------------
 // 🌐 MAIN API CALL FUNCTION
 // ------------------------------------------------------------------
@@ -20,23 +28,23 @@ const apiCall = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(`${VITE_SERVER_URL}${endpoint}`, config);
-    
+
     // ✅ Special handling for /admin/me 404
     if (!response.ok && response.status === 404 && endpoint === '/admin/me') {
       throw new Error('AUTH_ENDPOINT_NOT_FOUND');
     }
-    
+
     // Check if response is JSON before parsing
     const contentType = response.headers.get('content-type');
     const isJson = contentType && contentType.includes('application/json');
-    
+
     if (!isJson) {
       if (endpoint !== '/admin/me') {
         console.error(`❌ API Error: Expected JSON but got ${contentType}`);
       }
       throw new Error('Server returned an invalid response');
     }
-    
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -76,7 +84,7 @@ export const adminLogin = async (email, password) => {
 
     if (data.status === 'success') {
       console.log("✅ Login Success!");
-      
+
       // ✅ Store auth in localStorage
       localStorage.setItem('isAuthenticated', 'true');
       if (data.admin) {
@@ -97,11 +105,11 @@ export const adminLogout = async () => {
   } catch (error) {
     console.error("Logout failed", error);
   }
-  
+
   // ✅ Clear localStorage
   localStorage.removeItem('isAuthenticated');
   localStorage.removeItem('adminData');
-  
+
   window.location.replace('/login');
 };
 
@@ -109,7 +117,7 @@ export const adminLogout = async () => {
 export const checkAuth = async () => {
   // First check localStorage
   const isAuthStored = localStorage.getItem('isAuthenticated') === 'true';
-  
+
   if (!isAuthStored) {
     return false;
   }
@@ -118,7 +126,7 @@ export const checkAuth = async () => {
   if (!VERIFY_AUTH_ENDPOINT) {
     return true;
   }
-  
+
   // Try API verification (optional, won't fail if endpoint missing)
   try {
     const data = await apiCall('/admin/me', {
@@ -128,7 +136,7 @@ export const checkAuth = async () => {
         'Expires': '0',
       }
     });
-    
+
     if (data.status === 'success') {
       return true;
     }
@@ -136,7 +144,7 @@ export const checkAuth = async () => {
     // ✅ API failed, but localStorage says authenticated, so trust it
     console.log("📝 Using localStorage auth (API unavailable)");
   }
-  
+
   // Trust localStorage
   return isAuthStored;
 };
@@ -156,36 +164,59 @@ export const addBook = async (bookData) => {
 // ✅ NEW: Bulk upload function
 export const uploadBulkBooks = async (file) => {
   console.log("📤 Uploading bulk books...");
-  
+
+  const token = getAuthToken();
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const response = await fetch(`${VITE_SERVER_URL}/add/bulk/upload`, {
-      method: 'POST',
-      body: formData, // ⚠️ NO Content-Type header for multipart
-      credentials: 'include', // ✅ Send cookies
-    });
-
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
-    
-    if (!isJson) {
-      console.error(`❌ Expected JSON but got ${contentType}`);
-      throw new Error('Server returned invalid response. Check backend logs.');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    
-    const data = await response.json();
+    const endpoints = ['/add/bulk/upload', '/add/bulk/excel'];
+    let lastError = null;
 
-    if (!response.ok) {
+    for (const endpoint of endpoints) {
+      const response = await fetch(`${VITE_SERVER_URL}${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const data = isJson ? await response.json() : { message: await response.text() };
+
+      if (response.ok) {
+        return data;
+      }
+
+      if (response.status === 404) {
+        lastError = new Error(`Endpoint not found: ${endpoint}`);
+        continue;
+      }
+
+      if (response.status === 401) {
+        clearAuthToken();
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('adminData');
+      }
+
       const reportErrors = data?.report?.errors;
-      const reportMessage = Array.isArray(reportErrors) && reportErrors.length
-        ? `${data.message || 'Upload failed'}: ${reportErrors[0]}`
-        : (data.message || data.error || 'Upload failed');
+      if (Array.isArray(reportErrors) && reportErrors.length > 0) {
+        console.warn('⚠️ Upload had some issues:', reportErrors);
+        if (data.report?.inserted > 0 || data.report?.updated > 0) {
+          return data;
+        }
+      }
+
+      const reportMessage = data.message || data.error || `Upload failed at ${endpoint}`;
       throw new Error(reportMessage);
     }
 
-    return data;
+    throw lastError || new Error('Bulk upload endpoint not found on backend');
   } catch (error) {
     console.error('❌ Bulk upload error:', error);
     throw error;
