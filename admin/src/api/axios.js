@@ -161,7 +161,7 @@ export const addBook = async (bookData) => {
   });
 };
 
-// ✅ NEW: Bulk upload function
+// ✅ Bulk upload function
 export const uploadBulkBooks = async (file) => {
   console.log("📤 Uploading bulk books...");
 
@@ -235,8 +235,9 @@ export const searchBookByTitle = async (title) => {
   return await apiCall(`/search/book?title=${encodeURIComponent(title)}`);
 };
 
+// ✅ FIX: Use backend's existing endpoints
 export const getAllBooks = async (page = 1, limit = 20) => {
-  console.log(`🔍 Fetching books: page ${page}, limit ${limit}`);
+  console.log(`🔍 Fetching all books: page ${page}, limit ${limit}`);
   return await apiCall(`/search/all-books?page=${page}&limit=${limit}`);
 };
 
@@ -245,6 +246,7 @@ export const getUnavailableBooks = async (page = 1, limit = 20) => {
   return await apiCall(`/search/unavailable-books?page=${page}&limit=${limit}`);
 };
 
+// ✅ FIX: Backend uses 'image' field, not 'cover_url'
 export const getBooksWithoutImage = async (page = 1, limit = 20) => {
   console.log(`🔍 Fetching books without image: page ${page}, limit ${limit}`);
   return await apiCall(`/search/without-image?page=${page}&limit=${limit}`);

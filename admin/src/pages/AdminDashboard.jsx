@@ -11,7 +11,7 @@ import BookStats from '../components/books/BookStats';
 import BookTable from '../components/books/BookTable';
 
 // Pages
-import AddBook from './AddBook';
+import AddBook from './Addbook';
 import EditBook from './EditBook';
 
 // Common Components
@@ -19,7 +19,6 @@ import SearchBar from '../components/common/SearchBar';
 
 // Hooks
 import { useBooks } from '../hooks/useBooks';
-import useBookFilters from '../hooks/useBookFilters';
 
 // Data
 import { DEPARTMENTS } from '../api/axios';
@@ -41,6 +40,7 @@ function AdminDashboard() {
     deleteBook,
     toggleAvailability,
     refreshBooks,
+    searchBooks,
     page,
     totalPages,
     totalItems,
@@ -49,14 +49,6 @@ function AdminDashboard() {
     updateFilter,
   } = useBooks();
 
-  const {
-    searchQuery,
-    setSearchQuery,
-    selectedCategory,
-    setSelectedCategory,
-    filteredBooks,
-  } = useBookFilters(books);
-
   // ===============================
   // UI STATE
   // ===============================
@@ -64,6 +56,8 @@ function AdminDashboard() {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   // ===============================
   // HANDLERS - User Actions
@@ -84,7 +78,6 @@ function AdminDashboard() {
    */
   const handleSettings = () => {
     alert('Settings feature coming soon!');
-    // navigate('/settings');
   };
 
   /**
@@ -110,7 +103,7 @@ function AdminDashboard() {
   };
 
   /**
-   * ✅ FIXED: Handle Add Book - Direct reference
+   * Handle Add Book
    */
   const handleAddBook = async (bookData) => {
     console.log('➕ Dashboard: Adding book...', bookData);
@@ -119,16 +112,18 @@ function AdminDashboard() {
     
     console.log('➕ Dashboard: Add result:', result);
     
-    // Return result to AddBook component
     return result;
   };
 
+  /**
+   * Handle Bulk Upload Complete
+   */
   const handleBulkUploadComplete = async () => {
     refreshBooks();
   };
 
   /**
-   * ✅ FIXED: Handle Update Book - Direct reference
+   * Handle Update Book
    */
   const handleUpdateBook = async (updatedBookData) => {
     console.log('✏️ Dashboard: Updating book...', updatedBookData._id || updatedBookData.id);
@@ -137,7 +132,6 @@ function AdminDashboard() {
     
     console.log('✏️ Dashboard: Update result:', result);
     
-    // Return result to EditBook component
     return result;
   };
 
@@ -170,6 +164,18 @@ function AdminDashboard() {
     if (!result.success) {
       console.error('❌ Dashboard: Toggle failed:', result.error);
       alert('Failed to update availability: ' + result.error);
+    }
+  };
+
+  /**
+   * Handle Search
+   */
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    if (query && query.trim() !== '') {
+      searchBooks(query);
+    } else {
+      refreshBooks();
     }
   };
 
@@ -327,7 +333,7 @@ function AdminDashboard() {
       {/* ========================================= */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
         
-        {/* ✅ FIXED: Add Book Form - Direct callback reference */}
+        {/* Add Book Form */}
         <AddBook
           isOpen={isAddFormOpen}
           onClose={() => setIsAddFormOpen(false)}
@@ -335,7 +341,7 @@ function AdminDashboard() {
           onBulkUploaded={handleBulkUploadComplete}
         />
 
-        {/* ✅ FIXED: Edit Book Form - Direct callback reference */}
+        {/* Edit Book Form */}
         <EditBook
           isOpen={isEditFormOpen}
           book={selectedBook}
@@ -355,7 +361,7 @@ function AdminDashboard() {
         <div className="mb-6">
           <SearchBar
             searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
+            setSearchQuery={handleSearch}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
             categories={DEPARTMENTS}
@@ -372,7 +378,7 @@ function AdminDashboard() {
           </div>
         ) : (
           <BookTable
-            books={filteredBooks}
+            books={books}
             totalBooks={totalItems || books.length}
             onToggleAvailability={handleToggleAvailability}
             onDeleteBook={handleDeleteBook}
@@ -380,6 +386,7 @@ function AdminDashboard() {
           />
         )}
 
+        {/* ✅ PAGINATION - Now visible with correct data */}
         {!isLoading && totalPages > 1 && (
           <div className="mt-6 bg-white rounded-lg shadow p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
