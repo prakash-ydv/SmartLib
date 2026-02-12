@@ -39,9 +39,9 @@ function BookTable({
               <div className="flex gap-4">
                 {/* Cover Image - Fixed Aspect Ratio */}
                 <div className="flex-shrink-0 w-20 h-28 bg-gray-100 rounded-lg overflow-hidden shadow-sm border border-gray-200 relative group">
-                  {book.image ? (
+                  {book.cover_url ? (
                     <img
-                      src={book.image}
+                      src={book.cover_url}
                       alt={book.title}
                       className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
                     />

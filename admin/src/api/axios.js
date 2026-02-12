@@ -282,6 +282,46 @@ export const toggleBookAvailability = async (bookId, currentStatus) => {
   });
 };
 
+export const uploadBookImage = async (file, bookId) => {
+  console.log(`📤 Uploading image...`);
+  const formData = new FormData();
+  formData.append('file', file);
+  if (bookId) {
+    formData.append('bookId', bookId);
+  }
+
+  const token = getAuthToken();
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // NOTE: apiCall wrapper sets Content-Type to application/json by default, 
+  // but for FormData we need to let the browser set it (with boundary).
+  // So we use fetch directly here or override headers.
+  // Using fetch directly to avoid apiCall's JSON stringification.
+
+  try {
+    const response = await fetch(`${VITE_SERVER_URL}/upload/image`, {
+      method: 'POST',
+      headers, // Let browser set Content-Type
+      body: formData,
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Image upload failed');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('❌ Image upload error:', error);
+    throw error;
+  }
+};
+
 export const DEPARTMENTS = [
   "CSE", "IT", "ECE", "EEE", "MECH", "CIVIL",
   "MBA", "MCA", "BBA", "BCA", "B.COM", "B.SC",

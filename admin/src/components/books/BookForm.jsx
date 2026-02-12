@@ -1,21 +1,23 @@
-import React from 'react';
-import { DEPARTMENTS } from '../../api/axios';
+import React from "react";
+import { DEPARTMENTS } from "../../api/axios";
 
 /**
  * 📝 Reusable Book Form Component - REAL BACKEND SCHEMA
  * Used by both AddBook and EditBook pages
  */
-function BookForm({ 
-  formData, 
-  setFormData, 
-  onSubmit, 
-  onCancel, 
+function BookForm({
+  formData,
+  setFormData,
+  onSubmit,
+  onCancel,
+  onUploadImage,
   submitLabel,
-  disabled = false 
+  disabled = false,
 }) {
+  const [selectedFile, setSelectedFile] = React.useState(null);
+
   return (
     <div className="space-y-4">
-      
       {/* Title & Author Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -25,14 +27,16 @@ function BookForm({
           <input
             type="text"
             value={formData.title}
-            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, title: e.target.value })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter book title"
             disabled={disabled}
             required
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Author
@@ -40,14 +44,16 @@ function BookForm({
           <input
             type="text"
             value={formData.author}
-            onChange={(e) => setFormData({...formData, author: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, author: e.target.value })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter author name"
             disabled={disabled}
           />
         </div>
       </div>
-      
+
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -55,7 +61,9 @@ function BookForm({
         </label>
         <textarea
           value={formData.description}
-          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           placeholder="Enter book description"
@@ -71,7 +79,9 @@ function BookForm({
           </label>
           <select
             value={formData.department}
-            onChange={(e) => setFormData({...formData, department: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, department: e.target.value })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={disabled}
             required
@@ -84,7 +94,7 @@ function BookForm({
             ))}
           </select>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             ISBN
@@ -92,7 +102,7 @@ function BookForm({
           <input
             type="text"
             value={formData.isbn}
-            onChange={(e) => setFormData({...formData, isbn: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, isbn: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="978-0000000000"
             disabled={disabled}
@@ -109,13 +119,15 @@ function BookForm({
           <input
             type="text"
             value={formData.publisher}
-            onChange={(e) => setFormData({...formData, publisher: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, publisher: e.target.value })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter publisher name"
             disabled={disabled}
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Edition
@@ -123,7 +135,9 @@ function BookForm({
           <input
             type="text"
             value={formData.edition}
-            onChange={(e) => setFormData({...formData, edition: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, edition: e.target.value })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="e.g., 1st, 2nd, Revised"
             disabled={disabled}
@@ -131,36 +145,88 @@ function BookForm({
         </div>
       </div>
 
-      {/* Cover URL */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Book Cover URL
-        </label>
-        <input
-          type="url"
-          value={formData.cover_url}
-          onChange={(e) => setFormData({...formData, cover_url: e.target.value})}
-          placeholder="https://example.com/cover.jpg"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          disabled={disabled}
-        />
+      {/* Cover URL & Upload */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Book Cover URL
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={formData.cover_url}
+              onChange={(e) =>
+                setFormData({ ...formData, cover_url: e.target.value })
+              }
+              placeholder="https://example.com/cover.jpg"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={disabled}
+            />
+          </div>
+        </div>
+
+        {/* Image Upload - Only if handler provided */}
+        {onUploadImage && (
+          <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Or Upload New Cover Image
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setSelectedFile(e.target.files[0]);
+                  }
+                }}
+                className="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-full file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-blue-50 file:text-blue-700
+                          hover:file:bg-blue-100
+                        "
+                disabled={disabled}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedFile) {
+                    onUploadImage(selectedFile);
+                    setSelectedFile(null); // Clear after upload
+                  }
+                }}
+                disabled={!selectedFile || disabled}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Upload
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Uploading will automatically update the cover URL above.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Copies (Optional - Advanced) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Book Copies (IDs)
-          <span className="text-xs text-gray-500 ml-2">(Optional - comma separated)</span>
+          <span className="text-xs text-gray-500 ml-2">
+            (Optional - comma separated)
+          </span>
         </label>
         <input
           type="text"
-          value={formData.copies?.join(', ') || ''}
+          value={formData.copies?.join(", ") || ""}
           onChange={(e) => {
             const copiesArray = e.target.value
-              .split(',')
-              .map(s => s.trim())
-              .filter(s => s !== '');
-            setFormData({...formData, copies: copiesArray});
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s !== "");
+            setFormData({ ...formData, copies: copiesArray });
           }}
           placeholder="e.g., COPY001, COPY002"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -13,33 +13,27 @@ export const uploadImage = async (req, res) => {
 
         const { bookId } = req.body;
 
-        if (!bookId) {
-            return res.status(400).json({
-                status: "failed",
-                message: "Book ID is required",
-            });
+        // ✅ If bookId is provided, update the book
+        let book = null;
+        if (bookId) {
+            book = await Book.findById(bookId);
+            if (!book) {
+                return res.status(404).json({
+                    status: "failed",
+                    message: "Book not found",
+                });
+            }
+            book.cover_url = req.file.path;
+            await book.save();
         }
-
-        const book = await Book.findById(bookId);
-        console.log(book);
-
-        if (!book) {
-            return res.status(404).json({
-                status: "failed",
-                message: "Book not found",
-            });
-        }
-
-        book.cover_url = req.file.path;
-        await book.save();
 
         return res.status(200).json({
             status: "success",
-            message: "Image uploaded and book updated successfully",
+            message: bookId ? "Image uploaded and book updated successfully" : "Image uploaded successfully",
             data: {
                 url: req.file.path,
                 public_id: req.file.filename,
-                book,
+                book, // will be null if no bookId provided
             },
         });
     } catch (error) {
