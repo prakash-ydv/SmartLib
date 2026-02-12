@@ -1,28 +1,28 @@
 import { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import { adminLogout } from '../api/axios';
+import { useNavigate } from "react-router-dom";
+import { adminLogout } from "../api/axios";
 
 // Layout Components
-import AdminHeader from '../components/layout/AdminHeader';
-import AdminFooter from '../components/layout/AdminFooter';
+import AdminHeader from "../components/layout/AdminHeader";
+import AdminFooter from "../components/layout/AdminFooter";
 
 // Book Components
-import BookStats from '../components/books/BookStats';
-import BookTable from '../components/books/BookTable';
+import BookStats from "../components/books/BookStats";
+import BookTable from "../components/books/BookTable";
+import BookTableSkeleton from "../components/books/BookTableSkeleton";
 
 // Pages
-import AddBook from './Addbook';
-import EditBook from './EditBook';
+import AddBook from "./Addbook";
+import EditBook from "./EditBook";
 
 // Common Components
-import SearchBar from '../components/common/SearchBar';
+import SearchBar from "../components/common/SearchBar";
 
 // Hooks
-import { useBooks } from '../hooks/useBooks';
+import { useBooks } from "../hooks/useBooks";
 
 // Data
-import { DEPARTMENTS } from '../api/axios';
-
+import { DEPARTMENTS } from "../api/axios";
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -56,20 +56,20 @@ function AdminDashboard() {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   // ===============================
   // HANDLERS - User Actions
   // ===============================
-  
+
   /**
    * Handle Logout
    */
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
+    if (window.confirm("Are you sure you want to logout?")) {
       adminLogout();
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     }
   };
 
@@ -77,41 +77,44 @@ function AdminDashboard() {
    * Handle Settings
    */
   const handleSettings = () => {
-    alert('Settings feature coming soon!');
+    alert("Settings feature coming soon!");
   };
 
   /**
    * Open Edit Form
    */
   const handleEditBook = (book) => {
-    console.log('📝 Dashboard: Opening edit form for book:', book._id || book.id);
+    console.log(
+      "📝 Dashboard: Opening edit form for book:",
+      book._id || book.id,
+    );
     setSelectedBook(book);
     setIsEditFormOpen(true);
     setIsAddFormOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   /**
    * Open Add Form
    */
   const handleOpenAddForm = () => {
-    console.log('➕ Dashboard: Opening add book form');
+    console.log("➕ Dashboard: Opening add book form");
     setIsAddFormOpen(true);
     setIsEditFormOpen(false);
     setSelectedBook(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   /**
    * Handle Add Book
    */
   const handleAddBook = async (bookData) => {
-    console.log('➕ Dashboard: Adding book...', bookData);
-    
+    console.log("➕ Dashboard: Adding book...", bookData);
+
     const result = await addBook(bookData);
-    
-    console.log('➕ Dashboard: Add result:', result);
-    
+
+    console.log("➕ Dashboard: Add result:", result);
+
     return result;
   };
 
@@ -126,12 +129,15 @@ function AdminDashboard() {
    * Handle Update Book
    */
   const handleUpdateBook = async (updatedBookData) => {
-    console.log('✏️ Dashboard: Updating book...', updatedBookData._id || updatedBookData.id);
-    
+    console.log(
+      "✏️ Dashboard: Updating book...",
+      updatedBookData._id || updatedBookData.id,
+    );
+
     const result = await updateBook(updatedBookData);
-    
-    console.log('✏️ Dashboard: Update result:', result);
-    
+
+    console.log("✏️ Dashboard: Update result:", result);
+
     return result;
   };
 
@@ -139,16 +145,16 @@ function AdminDashboard() {
    * Handle Delete Book
    */
   const handleDeleteBook = async (bookId) => {
-    console.log('🗑️ Dashboard: Delete requested for book:', bookId);
-    
-    if (window.confirm('Are you sure you want to delete this book?')) {
+    console.log("🗑️ Dashboard: Delete requested for book:", bookId);
+
+    if (window.confirm("Are you sure you want to delete this book?")) {
       const result = await deleteBook(bookId);
-      
+
       if (result.success) {
-        console.log('✅ Dashboard: Book deleted successfully');
+        console.log("✅ Dashboard: Book deleted successfully");
       } else {
-        console.error('❌ Dashboard: Delete failed:', result.error);
-        alert('Failed to delete book: ' + result.error);
+        console.error("❌ Dashboard: Delete failed:", result.error);
+        alert("Failed to delete book: " + result.error);
       }
     }
   };
@@ -157,13 +163,13 @@ function AdminDashboard() {
    * Handle Toggle Availability
    */
   const handleToggleAvailability = async (bookId) => {
-    console.log('🔄 Dashboard: Toggle availability for book:', bookId);
-    
+    console.log("🔄 Dashboard: Toggle availability for book:", bookId);
+
     const result = await toggleAvailability(bookId);
-    
+
     if (!result.success) {
-      console.error('❌ Dashboard: Toggle failed:', result.error);
-      alert('Failed to update availability: ' + result.error);
+      console.error("❌ Dashboard: Toggle failed:", result.error);
+      alert("Failed to update availability: " + result.error);
     }
   };
 
@@ -172,7 +178,7 @@ function AdminDashboard() {
    */
   const handleSearch = (query) => {
     setSearchQuery(query);
-    if (query && query.trim() !== '') {
+    if (query && query.trim() !== "") {
       searchBooks(query);
     } else {
       refreshBooks();
@@ -183,27 +189,27 @@ function AdminDashboard() {
    * Export CSV
    */
   const exportCSV = () => {
-    console.log('📥 Dashboard: Exporting', books.length, 'books to CSV');
-    
+    console.log("📥 Dashboard: Exporting", books.length, "books to CSV");
+
     const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      'Title,Author,Department,ISBN,Publisher,Edition,Views\n' +
+      "data:text/csv;charset=utf-8," +
+      "Title,Author,Department,ISBN,Publisher,Edition,Views\n" +
       books
         .map(
           (book) =>
-            `"${book.title}","${book.author || ''}","${book.department}","${book.isbn || ''}","${book.publisher || ''}","${book.edition || ''}","${book.views || 0}"`
+            `"${book.title}","${book.author || ""}","${book.department}","${book.isbn || ""}","${book.publisher || ""}","${book.edition || ""}","${book.views || 0}"`,
         )
-        .join('\n');
+        .join("\n");
 
     const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'library_catalog.csv');
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "library_catalog.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    console.log('✅ Dashboard: CSV export completed');
+
+    console.log("✅ Dashboard: CSV export completed");
   };
 
   // ===============================
@@ -242,18 +248,26 @@ function AdminDashboard() {
   // ===============================
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      
       {/* ========================================= */}
       {/* TOP BAR - User Info & Menu */}
       {/* ========================================= */}
       <div className="bg-white shadow-sm border-b fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          
           {/* User Info */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
               </svg>
             </div>
             <div>
@@ -261,15 +275,25 @@ function AdminDashboard() {
               <p className="text-xs text-gray-500">Administrator</p>
             </div>
           </div>
-          
+
           {/* User Menu Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
               </svg>
               <span>Menu</span>
             </button>
@@ -284,15 +308,30 @@ function AdminDashboard() {
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                   <span>Settings</span>
                 </button>
-                
+
                 <div className="border-t border-gray-200 my-1"></div>
-                
+
                 <button
                   onClick={() => {
                     setShowUserMenu(false);
@@ -300,8 +339,18 @@ function AdminDashboard() {
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
                   </svg>
                   <span>Logout</span>
                 </button>
@@ -332,7 +381,6 @@ function AdminDashboard() {
       {/* MAIN CONTENT */}
       {/* ========================================= */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
-        
         {/* Add Book Form */}
         <AddBook
           isOpen={isAddFormOpen}
@@ -372,10 +420,7 @@ function AdminDashboard() {
 
         {/* Books Table Section */}
         {isLoading ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-r-transparent mb-4"></div>
-            <p className="text-gray-600">Loading books...</p>
-          </div>
+          <BookTableSkeleton />
         ) : (
           <BookTable
             books={books}
@@ -408,7 +453,8 @@ function AdminDashboard() {
                   {Array.from({ length: totalPages }, (_, index) => index + 1)
                     .filter((pageNumber) => {
                       if (totalPages <= 7) return true;
-                      if (pageNumber === 1 || pageNumber === totalPages) return true;
+                      if (pageNumber === 1 || pageNumber === totalPages)
+                        return true;
                       return Math.abs(pageNumber - page) <= 1;
                     })
                     .map((pageNumber) => (
