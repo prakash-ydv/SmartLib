@@ -117,7 +117,10 @@ const EditBook = ({ isOpen, book, onClose, onBookUpdated }) => {
     try {
       // Clean data - remove empty fields
       const cleanData = Object.fromEntries(
-        Object.entries(formData).filter(([_, v]) => {
+        Object.entries(formData).filter(([k, v]) => {
+          // ✅ FIX: Allow cover_url to be sent if empty (to trigger removal)
+          if (k === "cover_url") return true;
+
           if (Array.isArray(v)) return v.length > 0;
           return v !== "" && v !== null && v !== undefined;
         }),

@@ -27,6 +27,13 @@ async function updateBookController(req, res) {
         console.log("id", id);
         const updates = req.body;    // only changed fields
 
+        // Handle cover_url explicitly to allow removal
+        if (Object.prototype.hasOwnProperty.call(updates, 'cover_url')) {
+            if (updates.cover_url === "" || updates.cover_url === null) {
+                updates.cover_url = null;
+            }
+        }
+
         const book = await bookModel.findByIdAndUpdate(
             id,
             { $set: updates },

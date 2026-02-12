@@ -149,65 +149,101 @@ function BookForm({
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Book Cover URL
+            Book Cover Source
           </label>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={formData.cover_url}
-              onChange={(e) =>
-                setFormData({ ...formData, cover_url: e.target.value })
-              }
-              placeholder="https://example.com/cover.jpg"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={disabled}
-            />
-          </div>
-        </div>
 
-        {/* Image Upload - Only if handler provided */}
-        {onUploadImage && (
-          <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Or Upload New Cover Image
-            </label>
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3">
+            {/* URL Input */}
+            <div className="flex gap-2">
               <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) {
-                    setSelectedFile(e.target.files[0]);
-                  }
-                }}
-                className="block w-full text-sm text-gray-500
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-full file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-blue-50 file:text-blue-700
-                          hover:file:bg-blue-100
-                        "
+                type="url"
+                value={formData.cover_url || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, cover_url: e.target.value })
+                }
+                placeholder="https://example.com/cover.jpg"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={disabled}
               />
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedFile) {
-                    onUploadImage(selectedFile);
-                    setSelectedFile(null); // Clear after upload
-                  }
-                }}
-                disabled={!selectedFile || disabled}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Upload
-              </button>
+              {formData.cover_url && (
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, cover_url: "" })}
+                  className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                  disabled={disabled}
+                  title="Remove Cover URL"
+                >
+                  Remove
+                </button>
+              )}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Uploading will automatically update the cover URL above.
-            </p>
+
+            {/* Image Preview (if URL exists) */}
+            {formData.cover_url && (
+              <div className="w-24 h-32 bg-gray-100 rounded-lg border overflow-hidden">
+                <img
+                  src={formData.cover_url}
+                  alt="Cover Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.target.style.display = "none")}
+                />
+              </div>
+            )}
+
+            {/* OR Divider */}
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-gray-200"></div>
+              <span className="flex-shrink-0 mx-3 text-gray-400 text-xs uppercase">
+                OR
+              </span>
+              <div className="flex-grow border-t border-gray-200"></div>
+            </div>
+
+            {/* Image Upload - Only if handler provided */}
+            {onUploadImage && (
+              <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload New Cover Image
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }}
+                    className="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded-full file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-blue-50 file:text-blue-700
+                              hover:file:bg-blue-100
+                            "
+                    disabled={disabled}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedFile) {
+                        onUploadImage(selectedFile);
+                        setSelectedFile(null); // Clear after upload
+                      }
+                    }}
+                    disabled={!selectedFile || disabled}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Upload
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Uploading will automatically replace the cover URL above.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Copies (Optional - Advanced) */}
