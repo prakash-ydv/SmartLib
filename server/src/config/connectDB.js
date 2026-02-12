@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { fixISBNIndex } from "../utils/fixIndex.js";
+import { fixISBNIndex } from "../utlis/fixIndex.js";
 
 const connectDB = async () => {
     try {

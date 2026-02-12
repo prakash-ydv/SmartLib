@@ -16,6 +16,8 @@ import deleteBookRouter from "./routes/delete.book.route.js";
 import dashboardRouter from "./routes/dashboard.route.js";
 import featureRouter from "./routes/feature.route.js";
 
+import uploadRouter from "./routes/upload.route.js";
+
 dotenv.config();
 
 // middleware
@@ -36,6 +38,7 @@ app.use("/update", updateBookRouter);
 app.use("/delete", deleteBookRouter);
 app.use("/dashboard", dashboardRouter);
 app.use("/feature", featureRouter);
+app.use("/upload", uploadRouter);
 
 // admin routes
 app.use("/admin", adminRouter);

@@ -144,7 +144,17 @@ RESPONSE
 # Delete Book
 
 ### Delete a single book
-```
 DELETE /delete/book/{bookId}
 ```
 
+
+## Upload Image
+
+```
+POST /upload/image
+
+body
+{
+  "file": "file.jpg",
+  "bookId": "bookId"
+}   
