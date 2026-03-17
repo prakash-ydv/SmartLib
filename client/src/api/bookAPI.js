@@ -175,6 +175,17 @@ export async function searchBooks(query) {
   }
 }
 
+// ─── NEW FUNCTION — DESCRIPTION ───────────────────────────────────────────────
+export async function getBookDescription(bookId) {
+  try {
+    const { data } = await axiosInstance.get(`/feature/description/${bookId}`);
+    return data?.description || null;
+  } catch (error) {
+    console.error("Description fetch failed:", error);
+    return null;
+  }
+}
+
 export function getDepartmentsList() {
   return ["ALL", "CSE", "IT", "ECE", "EEE", "MECH", "CIVIL", "MBA", "MCA", "BBA", "BCA"];
 }
@@ -190,6 +201,7 @@ export default {
   updateBookViews,
   incrementBookViews,
   searchBooks,
+  getBookDescription,
   getDepartmentsList,
   isBookAvailable,
 };
