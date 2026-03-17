@@ -175,10 +175,13 @@ export async function searchBooks(query) {
   }
 }
 
-// ─── NEW FUNCTION — DESCRIPTION ───────────────────────────────────────────────
+// ─── DESCRIPTION — 120s timeout (AI generation + Render cold start) ───────────
 export async function getBookDescription(bookId) {
   try {
-    const { data } = await axiosInstance.get(`/feature/description/${bookId}`);
+    const { data } = await axiosInstance.get(
+      `/feature/description/${bookId}`,
+      { timeout: 120000 }
+    );
     return data?.description || null;
   } catch (error) {
     console.error("Description fetch failed:", error);
