@@ -3,7 +3,7 @@
 // Mobile-First | Accessible | Optimized
 // ============================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,6 +17,8 @@ import {
   Heart,
   BookOpen,
   AlertCircle,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 
 // Context
@@ -24,6 +26,14 @@ import { useBooks } from "../context/BookContext";
 
 // API
 import { updateBookViews, getBookDescription } from "../api/bookAPI";
+
+// Components
+import BookCard from "../components/BookCard";
+
+// ============================================
+// 🔢 CONFIG
+// ============================================
+const RELATED_BOOKS_LIMIT = 6;
 
 // ============================================
 // 🎨 LOADING SKELETON COMPONENT
@@ -56,14 +66,33 @@ const BookDetailSkeleton = () => (
 );
 
 // ============================================
+// 📦 RELATED BOOKS SKELETON
+// ============================================
+const RelatedBooksSkeleton = () => (
+  <div className="books-grid">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div key={i} className="rounded-xl overflow-hidden border border-gray-200">
+        <div className="h-1 bg-gray-200" />
+        <div className="h-48 bg-gray-200 skeleton" />
+        <div className="p-4 space-y-3">
+          <div className="h-5 bg-gray-200 rounded skeleton" />
+          <div className="h-4 w-2/3 bg-gray-200 rounded skeleton" />
+          <div className="h-10 bg-gray-200 rounded-lg skeleton mt-2" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// ============================================
 // 📖 BOOK DETAIL PAGE
 // ============================================
 export default function BookDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Context
-  const { getBookFromCache } = useBooks();
+  // ✅ allBooks aur contextLoading bhi lo
+  const { getBookFromCache, allBooks, loading: contextLoading } = useBooks();
 
   // State
   const [book, setBook] = useState(null);
@@ -71,23 +100,30 @@ export default function BookDetailPage() {
   const [error, setError] = useState(null);
   const [imageError, setImageError] = useState(false);
 
-  // Description state — separate se handle ho raha hai
+  // Description state
   const [description, setDescription] = useState("");
   const [descLoading, setDescLoading] = useState(false);
 
   // ============================================
-  // 🔄 FETCH BOOK FROM CONTEXT CACHE
+  // 🔄 FETCH BOOK
+  // id ya allBooks change hone pe re-run hoga
   // ============================================
   useEffect(() => {
+    // ✅ Books abhi load ho rahi hain — wait karo
+    if (contextLoading || allBooks.length === 0) {
+      setLoading(true);
+      return;
+    }
     fetchBookDetail();
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, contextLoading, allBooks]);
 
   const fetchBookDetail = () => {
     setLoading(true);
     setError(null);
+    setImageError(false); // ✅ naye book pe image error reset
 
     try {
-      // Book context cache se lo — no API call
       const bookData = getBookFromCache(id);
 
       if (!bookData) {
@@ -97,18 +133,19 @@ export default function BookDetailPage() {
 
       setBook(bookData);
 
-      // Description already DB mein hai — seedha set karo
+      // Description handle karo
       if (bookData.description && bookData.description.trim()) {
         setDescription(bookData.description);
       } else {
-        // Description nahi hai — AI se generate karo
+        setDescription(""); // ✅ purani description clear karo
         fetchDescription(id);
       }
 
-      // View count update — non blocking
+      // View count — non blocking
       updateBookViews(id).catch((err) => {
         console.log("View count update failed:", err);
       });
+
     } catch (err) {
       setError(err.message || "Failed to load book details");
       console.error("Error fetching book:", err);
@@ -124,9 +161,7 @@ export default function BookDetailPage() {
     setDescLoading(true);
     try {
       const desc = await getBookDescription(bookId);
-      if (desc) {
-        setDescription(desc);
-      }
+      if (desc) setDescription(desc);
     } catch (err) {
       console.error("Description fetch failed:", err);
     } finally {
@@ -134,20 +169,62 @@ export default function BookDetailPage() {
     }
   };
 
-  // Handle back navigation
-  const handleGoBack = () => {
-    navigate(-1);
-  };
+  // ============================================
+  // 🔗 RELATED BOOKS — memoized
+  // Sirf tab recompute hoga jab book ya allBooks change ho
+  // ============================================
+  const relatedBooks = useMemo(() => {
+    if (!book || !allBooks.length) return [];
 
-  // Handle image error
-  const handleImageError = () => {
-    setImageError(true);
-  };
+    const currentId = book._id || book.id;
+
+    // Primary: same department
+    const byDepartment = allBooks.filter((b) => {
+      const bId = b._id || b.id;
+      return (
+        bId !== currentId &&
+        b.department &&
+        book.department &&
+        b.department.toUpperCase() === book.department.toUpperCase()
+      );
+    });
+
+    if (byDepartment.length >= 2) {
+      return byDepartment.slice(0, RELATED_BOOKS_LIMIT);
+    }
+
+    // Fallback: same author
+    const byAuthor = allBooks.filter((b) => {
+      const bId = b._id || b.id;
+      return (
+        bId !== currentId &&
+        b.author &&
+        book.author &&
+        b.author.toLowerCase() === book.author.toLowerCase()
+      );
+    });
+
+    // Merge: department pehle, phir author (no duplicates)
+    const merged = [
+      ...byDepartment,
+      ...byAuthor.filter(
+        (b) => !byDepartment.some((d) => (d._id || d.id) === (b._id || b.id))
+      ),
+    ];
+
+    return merged.slice(0, RELATED_BOOKS_LIMIT);
+  }, [book, allBooks]);
+
+  // ============================================
+  // 🎯 HANDLERS
+  // ============================================
+  const handleGoBack = () => navigate(-1);
+  const handleImageError = () => setImageError(true);
 
   // ============================================
   // 🎨 LOADING STATE
   // ============================================
-  if (loading) {
+  if (loading || contextLoading) {
     return <BookDetailSkeleton />;
   }
 
@@ -207,10 +284,11 @@ export default function BookDetailPage() {
   }
 
   // ============================================
-  // 📚 BOOK DETAILS RENDER
+  // 📚 MAIN RENDER
   // ============================================
   return (
     <div className="container-custom section-padding">
+
       {/* Back Button */}
       <button
         onClick={handleGoBack}
@@ -223,8 +301,9 @@ export default function BookDetailPage() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-12">
+
         {/* ============================================ */}
-        {/* 📸 BOOK COVER SECTION */}
+        {/* 📸 BOOK COVER SECTION                       */}
         {/* ============================================ */}
         <div className="md:col-span-1">
           <div className="sticky top-24">
@@ -288,9 +367,10 @@ export default function BookDetailPage() {
         </div>
 
         {/* ============================================ */}
-        {/* 📝 BOOK INFORMATION SECTION */}
+        {/* 📝 BOOK INFORMATION SECTION                 */}
         {/* ============================================ */}
         <div className="md:col-span-2 space-y-6">
+
           {/* Title & Author */}
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
@@ -310,10 +390,7 @@ export default function BookDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
               <div className="flex items-center gap-2 mb-1">
-                <Building2
-                  className="h-4 w-4 text-indigo-600"
-                  aria-hidden="true"
-                />
+                <Building2 className="h-4 w-4 text-indigo-600" aria-hidden="true" />
                 <span className="text-xs uppercase font-semibold text-gray-500">
                   Department
                 </span>
@@ -326,10 +403,7 @@ export default function BookDetailPage() {
             {book.isbn && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
-                  <Hash
-                    className="h-4 w-4 text-indigo-600"
-                    aria-hidden="true"
-                  />
+                  <Hash className="h-4 w-4 text-indigo-600" aria-hidden="true" />
                   <span className="text-xs uppercase font-semibold text-gray-500">
                     ISBN
                   </span>
@@ -343,10 +417,7 @@ export default function BookDetailPage() {
             {book.publisher && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
-                  <BookOpen
-                    className="h-4 w-4 text-indigo-600"
-                    aria-hidden="true"
-                  />
+                  <BookOpen className="h-4 w-4 text-indigo-600" aria-hidden="true" />
                   <span className="text-xs uppercase font-semibold text-gray-500">
                     Publisher
                   </span>
@@ -360,10 +431,7 @@ export default function BookDetailPage() {
             {book.edition && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
-                  <Calendar
-                    className="h-4 w-4 text-indigo-600"
-                    aria-hidden="true"
-                  />
+                  <Calendar className="h-4 w-4 text-indigo-600" aria-hidden="true" />
                   <span className="text-xs uppercase font-semibold text-gray-500">
                     Edition
                   </span>
@@ -375,16 +443,13 @@ export default function BookDetailPage() {
             )}
           </div>
 
-          {/* ============================================ */}
-          {/* 📄 DESCRIPTION SECTION                      */}
-          {/* ============================================ */}
+          {/* Description */}
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
             <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
               <Book className="h-5 w-5 text-indigo-600" />
               Description
             </h3>
 
-            {/* Generating state */}
             {descLoading && (
               <div className="flex items-center gap-3">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-r-transparent shrink-0" />
@@ -394,14 +459,12 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            {/* Description text */}
             {!descLoading && description && (
               <p className="text-sm md:text-base text-gray-700 leading-relaxed">
                 {description}
               </p>
             )}
 
-            {/* No description at all */}
             {!descLoading && !description && (
               <p className="text-sm text-gray-400 italic">
                 No description available.
@@ -448,6 +511,59 @@ export default function BookDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ============================================ */}
+      {/* 🔗 RELATED BOOKS SECTION                    */}
+      {/* ============================================ */}
+      {relatedBooks.length > 0 && (
+        <section
+          aria-labelledby="related-books-heading"
+          className="mt-16 md:mt-20"
+        >
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-6 md:mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 md:w-2 h-6 md:h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shrink-0" />
+              <div>
+                <h2
+                  id="related-books-heading"
+                  className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900"
+                >
+                  Related Books
+                </h2>
+                <p className="text-xs md:text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  {book.department
+                    ? `More from ${book.department} department`
+                    : `More by ${book.author}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Count pill */}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs md:text-sm font-semibold rounded-full border border-indigo-100 shrink-0">
+              <ChevronRight className="h-3.5 w-3.5" />
+              {relatedBooks.length} book{relatedBooks.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {/* Gradient Divider */}
+          <div className="h-px bg-gradient-to-r from-indigo-200 via-purple-200 to-transparent mb-8" />
+
+          {/* Books Grid */}
+          <div className="books-grid">
+            {relatedBooks.map((relatedBook) => (
+              <BookCard
+                key={relatedBook._id || relatedBook.id}
+                book={relatedBook}
+
+
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

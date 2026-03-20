@@ -9,7 +9,6 @@ import { useNavigate } from "react-router-dom";
 import { useBooks } from "../context/BookContext";
 
 // Components
-
 import Hero from "../components/Hero";
 import SearchBar from "../components/SearchBar";
 import FilterPanel from "../components/FilterPanel";
@@ -56,7 +55,8 @@ function HomePage() {
   } = useBooks();
 
   // Local State
-  const [searchTerm, setSearchTerm] = useState("");
+  // ✅ FIXED: renamed searchQuery → searchQuery to match SearchBar props
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     branch: "all",
     year: "all",
@@ -81,8 +81,8 @@ function HomePage() {
     let result = [...allBooks];
 
     // Search filter
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase();
+    if (searchQuery.trim()) {
+      const search = searchQuery.toLowerCase();
       result = result.filter(
         (book) =>
           book.title?.toLowerCase().includes(search) ||
@@ -109,7 +109,7 @@ function HomePage() {
     }
 
     return result;
-  }, [allBooks, searchTerm, filters]);
+  }, [allBooks, searchQuery, filters]);
 
   // ============================================
   // 📄 PAGINATION
@@ -141,8 +141,23 @@ function HomePage() {
   // ============================================
 
   const handleSearchChange = (value) => {
-    setSearchTerm(value);
+    setSearchQuery(value);
     setCurrentPage(1);
+  };
+
+  // ✅ CHANGE 1: Hero search handler — sets searchQuery AND scrolls to catalog
+  const handleHeroSearch = (term) => {
+    setSearchQuery(term);
+    setCurrentPage(1);
+    // Small delay so filteredBooks re-renders before scroll
+    setTimeout(() => {
+      if (booksGridRef.current) {
+        const headerOffset = 100;
+        const elementPosition = booksGridRef.current.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+      }
+    }, 150);
   };
 
   const handleFilterChange = (newFilters) => {
@@ -151,7 +166,7 @@ function HomePage() {
   };
 
   const handleReset = () => {
-    setSearchTerm("");
+    setSearchQuery("");
     setFilters({
       branch: "all",
       year: "all",
@@ -226,8 +241,8 @@ function HomePage() {
   // ============================================
   return (
     <>
-      {/* Hero Section */}
-      <Hero />
+      {/* ✅ CHANGE 2: Hero gets onSearch prop — connects hero search to catalog filter */}
+      <Hero onSearch={handleHeroSearch} />
 
       {/* Main Container - Mobile First */}
       <div className="container-custom section-padding">
@@ -267,8 +282,8 @@ function HomePage() {
         {/* Search & Filter Section */}
         <div className="space-y-4">
           <SearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={handleSearchChange}
+            searchQuery={searchQuery}
+            setSearchQuery={handleSearchChange}
           />
 
           <FilterPanel

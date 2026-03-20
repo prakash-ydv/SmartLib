@@ -1,5 +1,6 @@
 // ============================================
-// 📦 BOOK CONTEXT - FIXED VERSION
+// 📦 BOOK CONTEXT - REAL-TIME POLLING
+// Auto-refresh every 30s — zero backend changes
 // ============================================
 
 import { createContext, useState, useContext, useCallback, useEffect, useRef } from "react";
@@ -13,6 +14,9 @@ import {
 
 export const BookContext = createContext(null);
 
+// ✅ Polling interval — 30 seconds
+const POLL_INTERVAL_MS = 30_000;
+
 export function BookProvider({ children }) {
   
   // State
@@ -22,20 +26,59 @@ export function BookProvider({ children }) {
   const [error, setError] = useState(null);
   const [selectedDepartment, setSelectedDepartment] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // ✅ NEW: Last updated timestamp — shown in UI
+  const [lastUpdated, setLastUpdated] = useState(null);
   
-  // Ref for cleanup
-  const isMounted = useRef(true);
+  // Refs
+  const isMounted   = useRef(true);
+  const pollRef     = useRef(null); // ✅ polling timer ref
 
   // ============================================
-  // 🚀 INITIAL LOAD - Auto fetch on mount
+  // 🚀 INITIAL LOAD
   // ============================================
   useEffect(() => {
     fetchAllBooks();
     
-    // Cleanup on unmount
     return () => {
       isMounted.current = false;
+      // ✅ Clear polling on unmount
+      if (pollRef.current) clearInterval(pollRef.current);
     };
+  }, []);
+
+  // ============================================
+  // ✅ POLLING — silent background refresh
+  // Starts after first successful load
+  // ============================================
+  const startPolling = useCallback(() => {
+    // Clear any existing interval first
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    pollRef.current = setInterval(async () => {
+      if (!isMounted.current) return;
+
+      try {
+        const response = await getAllBooks();
+        if (!isMounted.current) return;
+
+        const books = response.data || [];
+
+        // ✅ Only update if data actually changed — avoids unnecessary re-renders
+        setAllBooks((prev) => {
+          const prevIds = prev.map((b) => b._id || b.id).join(",");
+          const newIds  = books.map((b) => b._id || b.id).join(",");
+          if (prevIds === newIds && prev.length === books.length) return prev;
+          console.log("🔄 BookContext: Polling — data updated");
+          return books;
+        });
+
+        setLastUpdated(new Date());
+      } catch (err) {
+        // Silent fail — polling should never crash the app
+        console.warn("⚠️ BookContext: Polling failed silently", err.message);
+      }
+    }, POLL_INTERVAL_MS);
   }, []);
 
   // ============================================
@@ -55,7 +98,11 @@ export function BookProvider({ children }) {
       const books = response.data || [];
       setAllBooks(books);
       setFilteredBooks(books);
+      setLastUpdated(new Date());
       console.log(`✅ BookContext: Loaded ${books.length} books`);
+
+      // ✅ Start polling after first successful load
+      startPolling();
       
       return books;
       
@@ -73,15 +120,14 @@ export function BookProvider({ children }) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [startPolling]);
 
   // ============================================
-  // 📖 GET BOOK FROM CACHE (NEW - NO API CALL)
+  // 📖 GET BOOK FROM CACHE
   // ============================================
   const getBookFromCache = useCallback((bookId) => {
     console.log(`📖 BookContext: Getting book ${bookId} from cache`);
     
-    // Try to find by _id or id field
     const book = allBooks.find(
       (b) => b._id === bookId || b.id === bookId
     );
@@ -101,39 +147,29 @@ export function BookProvider({ children }) {
   const fetchBookById = useCallback(async (bookId) => {
     console.log(`📖 BookContext: Attempting to fetch book ${bookId}`);
     
-    // First, try to get from cache
     const cachedBook = getBookFromCache(bookId);
     if (cachedBook) {
       console.log("✅ Using cached book instead of API");
       return cachedBook;
     }
     
-    // If not in cache, try API (will likely fail with 400)
     console.log("⚠️ Book not in cache, trying API...");
     setLoading(true);
     setError(null);
 
     try {
       const book = await getBookById(bookId);
-      
       if (!isMounted.current) return null;
-      
       console.log("✅ BookContext: Book fetched:", book?.title);
       return book;
-      
     } catch (err) {
       if (!isMounted.current) return null;
-      
       const errorMsg = "Book not found. Please go back and try again.";
       setError(errorMsg);
       console.error("❌ BookContext Error:", err.message);
-      
       return null;
-      
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      if (isMounted.current) setLoading(false);
     }
   }, [getBookFromCache]);
 
@@ -142,19 +178,14 @@ export function BookProvider({ children }) {
   // ============================================
   const filterByDepartment = useCallback((department) => {
     console.log(`🏢 BookContext: Filtering by ${department}`);
-    
     setSelectedDepartment(department);
     
     let filtered = allBooks;
-    
-    // Apply department filter
     if (department !== "ALL" && department !== "all") {
       filtered = filtered.filter(
         (book) => book.department?.toUpperCase() === department.toUpperCase()
       );
     }
-    
-    // Apply search query if exists
     if (searchQuery.trim()) {
       const search = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -165,10 +196,8 @@ export function BookProvider({ children }) {
           book.publisher?.toLowerCase().includes(search)
       );
     }
-    
     setFilteredBooks(filtered);
     console.log(`✅ BookContext: Filtered to ${filtered.length} books`);
-    
   }, [allBooks, searchQuery]);
 
   // ============================================
@@ -176,12 +205,9 @@ export function BookProvider({ children }) {
   // ============================================
   const searchBooks = useCallback((query) => {
     console.log(`🔍 BookContext: Searching for "${query}"`);
-    
     setSearchQuery(query);
     
     let filtered = allBooks;
-    
-    // Apply search
     if (query.trim()) {
       const search = query.toLowerCase();
       filtered = filtered.filter(
@@ -192,24 +218,19 @@ export function BookProvider({ children }) {
           book.publisher?.toLowerCase().includes(search)
       );
     }
-    
-    // Apply department filter if active
     if (selectedDepartment !== "ALL" && selectedDepartment !== "all") {
       filtered = filtered.filter(
         (book) => book.department?.toUpperCase() === selectedDepartment.toUpperCase()
       );
     }
-    
     setFilteredBooks(filtered);
     console.log(`✅ BookContext: Found ${filtered.length} books`);
-    
   }, [allBooks, selectedDepartment]);
 
   // ============================================
   // 🔄 AUTO-UPDATE filtered books when allBooks changes
   // ============================================
   useEffect(() => {
-    // Re-apply filters when allBooks updates
     if (searchQuery.trim() || selectedDepartment !== "ALL") {
       searchBooks(searchQuery);
     } else {
@@ -248,9 +269,7 @@ export function BookProvider({ children }) {
     return fetchAllBooks();
   }, [fetchAllBooks]);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  const clearError = useCallback(() => setError(null), []);
   
   const resetFilters = useCallback(() => {
     setSelectedDepartment("ALL");
@@ -269,11 +288,14 @@ export function BookProvider({ children }) {
     error,
     selectedDepartment,
     searchQuery,
+
+    // ✅ NEW: last updated time — use in UI if needed
+    lastUpdated,
     
     // Actions
     fetchAllBooks,
     fetchBookById,
-    getBookFromCache, // ← NEW: Get book without API call
+    getBookFromCache,
     fetchPopularBooks,
     filterByDepartment,
     searchBooks,
@@ -299,11 +321,7 @@ export function BookProvider({ children }) {
 // ============================================
 export function useBooks() {
   const context = useContext(BookContext);
-  
-  if (!context) {
-    throw new Error("useBooks must be used inside BookProvider");
-  }
-  
+  if (!context) throw new Error("useBooks must be used inside BookProvider");
   return context;
 }
 

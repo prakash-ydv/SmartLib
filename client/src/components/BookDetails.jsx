@@ -1,49 +1,51 @@
 // ============================================
-// 📖 BOOK DETAIL PAGE - FIXED VERSION
+// 📖 BOOK DETAIL PAGE
 // Mobile-First | Accessible | Optimized
 // ============================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, 
-  Book, 
-  User, 
-  Hash, 
-  Building2, 
-  Calendar, 
-  Eye, 
+import {
+  ArrowLeft,
+  Book,
+  User,
+  Hash,
+  Building2,
+  Calendar,
+  Eye,
   Copy,
-  Heart,
   BookOpen,
-  AlertCircle
+  AlertCircle,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 
-// ✅ FIXED: Import from context instead of API
 import { useBooks } from "../context/BookContext";
 import { updateBookViews } from "../api/bookAPI";
+import BookCard from "../components/BookCard";
 
 // ============================================
-// 🎨 LOADING SKELETON COMPONENT
+// 🔢 RELATED BOOKS CONFIG
+// ============================================
+const RELATED_BOOKS_LIMIT = 6;
+
+// ============================================
+// 🎨 LOADING SKELETON
 // ============================================
 const BookDetailSkeleton = () => (
   <div className="container-custom section-padding">
     <div className="mb-6">
       <div className="h-10 w-32 bg-gray-200 rounded-lg skeleton" />
     </div>
-    
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-      {/* Image Skeleton */}
       <div className="md:col-span-1">
         <div className="aspect-[3/4] bg-gray-200 rounded-xl skeleton" />
       </div>
-      
-      {/* Info Skeleton */}
       <div className="md:col-span-2 space-y-4">
         <div className="h-8 bg-gray-200 rounded-lg skeleton" />
         <div className="h-6 w-3/4 bg-gray-200 rounded-lg skeleton" />
         <div className="grid grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-16 bg-gray-200 rounded-lg skeleton" />
           ))}
         </div>
@@ -54,85 +56,130 @@ const BookDetailSkeleton = () => (
 );
 
 // ============================================
+// 📦 RELATED BOOKS SKELETON
+// ============================================
+const RelatedBooksSkeleton = () => (
+  <div className="books-grid">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div key={i} className="rounded-xl overflow-hidden border border-gray-200">
+        <div className="h-1 bg-gray-200" />
+        <div className="h-48 bg-gray-200 skeleton" />
+        <div className="p-4 space-y-3">
+          <div className="h-5 bg-gray-200 rounded skeleton" />
+          <div className="h-4 w-2/3 bg-gray-200 rounded skeleton" />
+          <div className="h-10 bg-gray-200 rounded-lg skeleton mt-2" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// ============================================
 // 📖 BOOK DETAIL PAGE
 // ============================================
 export default function BookDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // ✅ FIXED: Get book from context instead of API
   const { getBookFromCache, allBooks, loading: contextLoading } = useBooks();
 
-  // State
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageError, setImageError] = useState(false);
 
-  // Fetch book on mount
-  useEffect(() => {
-    fetchBookDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, allBooks, contextLoading]);
-
-  // ✅ FIXED: Fetch book details from cache
-  const fetchBookDetail = async () => {
-    console.log(`📖 BookDetailPage: Loading book ${id}`);
-    
-    // Wait for context to finish loading
+  // ============================================
+  // 📚 FETCH BOOK — stable, param-aware
+  // ============================================
+  const fetchBookDetail = useCallback(async () => {
     if (contextLoading) {
-      console.log("⏳ Waiting for books to load...");
       setLoading(true);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setImageError(false); // reset on book change
 
     try {
-      // ✅ Get book from cache (already loaded in context)
       const bookData = getBookFromCache(id);
-      
-      if (!bookData) {
-        throw new Error("Book not found in catalog");
-      }
+      if (!bookData) throw new Error("Book not found in catalog");
 
-      console.log(`✅ BookDetailPage: Loaded "${bookData.title}"`);
       setBook(bookData);
 
-      // Update view count (non-blocking)
-      updateBookViews(id).catch((err) => {
-        console.log("View count update failed:", err);
-      });
-      
+      // Non-blocking view count update
+      updateBookViews(id).catch((err) =>
+        console.warn("View count update failed:", err)
+      );
     } catch (err) {
       setError(err.message || "Failed to load book details");
       console.error("❌ Error fetching book:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, contextLoading, getBookFromCache]);
 
-  // Handle back navigation
-  const handleGoBack = () => {
-    navigate(-1);
-  };
-
-  // Handle image error
-  const handleImageError = () => {
-    setImageError(true);
-  };
+  // Re-run whenever the route param or context changes
+  useEffect(() => {
+    fetchBookDetail();
+  }, [fetchBookDetail]);
 
   // ============================================
-  // 🎨 LOADING STATE
+  // 🔗 RELATED BOOKS — memoized, zero re-renders
   // ============================================
-  if (loading || contextLoading) {
-    return <BookDetailSkeleton />;
-  }
+  const relatedBooks = useMemo(() => {
+    if (!book || !allBooks.length) return [];
+
+    const currentId = book._id || book.id;
+
+    // Primary: same department
+    const byDepartment = allBooks.filter((b) => {
+      const bId = b._id || b.id;
+      return (
+        bId !== currentId &&
+        b.department &&
+        book.department &&
+        b.department.toUpperCase() === book.department.toUpperCase()
+      );
+    });
+
+    if (byDepartment.length >= 2) {
+      return byDepartment.slice(0, RELATED_BOOKS_LIMIT);
+    }
+
+    // Secondary fallback: same author
+    const byAuthor = allBooks.filter((b) => {
+      const bId = b._id || b.id;
+      return (
+        bId !== currentId &&
+        b.author &&
+        book.author &&
+        b.author.toLowerCase() === book.author.toLowerCase()
+      );
+    });
+
+    // Merge: department results first, fill remaining slots with author matches
+    const merged = [
+      ...byDepartment,
+      ...byAuthor.filter(
+        (b) => !byDepartment.some((d) => (d._id || d.id) === (b._id || b.id))
+      ),
+    ];
+
+    return merged.slice(0, RELATED_BOOKS_LIMIT);
+  }, [book, allBooks]);
 
   // ============================================
-  // ❌ ERROR STATE
+  // 🎯 HANDLERS
   // ============================================
+  const handleGoBack = () => navigate(-1);
+  const handleImageError = () => setImageError(true);
+
+  // ============================================
+  // 🎨 STATES
+  // ============================================
+  if (loading || contextLoading) return <BookDetailSkeleton />;
+
   if (error) {
     return (
       <div className="container-custom section-padding">
@@ -146,17 +193,11 @@ export default function BookDetailPage() {
             </h2>
             <p className="text-sm md:text-base text-gray-600 mb-6">{error}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={handleGoBack}
-                className="btn btn-secondary"
-              >
+              <button onClick={handleGoBack} className="btn btn-secondary">
                 <ArrowLeft className="h-4 w-4" />
                 Go Back
               </button>
-              <button
-                onClick={fetchBookDetail}
-                className="btn btn-primary"
-              >
+              <button onClick={fetchBookDetail} className="btn btn-primary">
                 🔄 Try Again
               </button>
             </div>
@@ -166,9 +207,6 @@ export default function BookDetailPage() {
     );
   }
 
-  // ============================================
-  // 📭 EMPTY STATE
-  // ============================================
   if (!book) {
     return (
       <div className="container-custom section-padding">
@@ -181,10 +219,7 @@ export default function BookDetailPage() {
             <p className="text-sm md:text-base text-gray-600 mb-6">
               The book you're looking for doesn't exist or has been removed.
             </p>
-            <button
-              onClick={handleGoBack}
-              className="btn btn-primary"
-            >
+            <button onClick={handleGoBack} className="btn btn-primary">
               <ArrowLeft className="h-4 w-4" />
               Back to Catalog
             </button>
@@ -195,12 +230,12 @@ export default function BookDetailPage() {
   }
 
   // ============================================
-  // 📚 BOOK DETAILS RENDER
+  // 📚 MAIN RENDER
   // ============================================
   return (
     <div className="container-custom section-padding">
-      
-      {/* Back Button - Mobile Friendly */}
+
+      {/* ── Back Button ── */}
       <button
         onClick={handleGoBack}
         className="inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 hover:text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-all mb-6 min-h-[44px] focus-ring"
@@ -210,15 +245,12 @@ export default function BookDetailPage() {
         <span>Back</span>
       </button>
 
-      {/* Main Content - Mobile First Grid */}
+      {/* ── Main Detail Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-12">
-        
-        {/* ============================================ */}
-        {/* 📸 BOOK COVER SECTION */}
-        {/* ============================================ */}
+
+        {/* ── Cover Column ── */}
         <div className="md:col-span-1">
           <div className="sticky top-24">
-            {/* Book Cover */}
             <div className="relative group">
               <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden shadow-xl">
                 {!imageError ? (
@@ -232,19 +264,19 @@ export default function BookDetailPage() {
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                     <Book className="h-16 w-16 text-gray-400 mb-3" />
-                    <p className="text-sm text-gray-500 font-medium">
-                      {book.title}
-                    </p>
+                    <p className="text-sm text-gray-500 font-medium">{book.title}</p>
                   </div>
                 )}
               </div>
 
               {/* Availability Badge */}
-              <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
-                book.isAvailable || (book.copies && book.copies.length > 0)
-                  ? "bg-green-500/90 text-white"
-                  : "bg-red-500/90 text-white"
-              }`}>
+              <div
+                className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
+                  book.isAvailable || (book.copies && book.copies.length > 0)
+                    ? "bg-green-500/90 text-white"
+                    : "bg-red-500/90 text-white"
+                }`}
+              >
                 {book.isAvailable || (book.copies && book.copies.length > 0)
                   ? "✓ Available"
                   : "✗ Not Available"}
@@ -260,7 +292,6 @@ export default function BookDetailPage() {
                   <p className="text-lg font-bold text-gray-900">{book.views || 0}</p>
                 </div>
               )}
-              
               {book.copies && book.copies.length > 0 && (
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 text-center border border-green-100">
                   <Copy className="h-5 w-5 text-green-600 mx-auto mb-1" />
@@ -272,11 +303,9 @@ export default function BookDetailPage() {
           </div>
         </div>
 
-        {/* ============================================ */}
-        {/* 📝 BOOK INFORMATION SECTION */}
-        {/* ============================================ */}
+        {/* ── Info Column ── */}
         <div className="md:col-span-2 space-y-6">
-          
+
           {/* Title & Author */}
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
@@ -285,15 +314,15 @@ export default function BookDetailPage() {
             {book.author && (
               <p className="flex items-center gap-2 text-base md:text-lg text-gray-600">
                 <User className="h-5 w-5" aria-hidden="true" />
-                <span>by <strong>{book.author}</strong></span>
+                <span>
+                  by <strong>{book.author}</strong>
+                </span>
               </p>
             )}
           </div>
 
-          {/* Metadata Grid - Mobile First */}
+          {/* Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Department */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
               <div className="flex items-center gap-2 mb-1">
                 <Building2 className="h-4 w-4 text-indigo-600" aria-hidden="true" />
@@ -302,7 +331,6 @@ export default function BookDetailPage() {
               <p className="text-sm font-bold text-gray-900">{book.department || "N/A"}</p>
             </div>
 
-            {/* ISBN */}
             {book.isbn && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
@@ -313,7 +341,6 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            {/* Publisher */}
             {book.publisher && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
@@ -324,7 +351,6 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            {/* Edition */}
             {book.edition && (
               <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
@@ -349,7 +375,7 @@ export default function BookDetailPage() {
             </div>
           )}
 
-          {/* Copy IDs */}
+          {/* Available Copies */}
           {book.copies && book.copies.length > 0 && (
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -369,12 +395,70 @@ export default function BookDetailPage() {
             </div>
           )}
 
-          {/* Action Buttons - Mobile Friendly */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            
-          </div>
+          {/* Action Buttons placeholder */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4" />
         </div>
       </div>
+
+      {/* ============================================ */}
+      {/* 🔗 RELATED BOOKS SECTION                    */}
+      {/* ============================================ */}
+      {(relatedBooks.length > 0 || contextLoading) && (
+        <section
+          aria-labelledby="related-books-heading"
+          className="mt-16 md:mt-20"
+        >
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-6 md:mb-8">
+            <div className="flex items-center gap-3">
+              {/* Accent bar — matches site style */}
+              <div className="w-1.5 md:w-2 h-6 md:h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shrink-0" />
+              <div>
+                <h2
+                  id="related-books-heading"
+                  className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900"
+                >
+                  Related Books
+                </h2>
+                {/* Subtitle: shows what the match is based on */}
+                <p className="text-xs md:text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  {book.department
+                    ? `More from ${book.department} department`
+                    : `More by ${book.author}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Count pill */}
+            {relatedBooks.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs md:text-sm font-semibold rounded-full border border-indigo-100 shrink-0">
+                <ChevronRight className="h-3.5 w-3.5" />
+                {relatedBooks.length} book{relatedBooks.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-indigo-200 via-purple-200 to-transparent mb-8" />
+
+          {/* Books Grid or Skeleton */}
+          {contextLoading ? (
+            <RelatedBooksSkeleton />
+          ) : (
+            <div className="books-grid">
+              {relatedBooks.map((relatedBook) => (
+                <BookCard
+                  key={relatedBook._id || relatedBook.id}
+                  book={relatedBook}
+                  // No onClick prop → BookCard uses its internal navigate(`/book/:id`)
+                  // Route change triggers useEffect([fetchBookDetail]) → page updates without reload
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
