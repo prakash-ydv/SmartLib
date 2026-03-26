@@ -45,6 +45,12 @@ const bookSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+    batchID : {
+        type : String,
+        default : () => {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
     }
 });
 
