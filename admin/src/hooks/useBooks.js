@@ -1,3 +1,8 @@
+// ============================================================
+// 📚 useBooks HOOK — IES SMARTLIB ADMIN
+// CRUD + Real-time polling + Consistent refresh
+// ============================================================
+
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -14,9 +19,13 @@ import {
   getMostViewedBooks
 } from '../api/axios';
 
-// ======================================================
-// ✅ GROUP RAW BACKEND BOOK ROWS FOR UI
-// ======================================================
+// ✅ Silent polling interval — 30 seconds
+const POLL_INTERVAL_MS = 30_000;
+
+// ============================================================
+// 🔧 GROUP RAW BACKEND ROWS FOR UI
+// Multiple rows with same ISBN = one book with copies count
+// ============================================================
 const groupBooksForUI = (rawBooks = []) => {
   const map = {};
 
@@ -26,19 +35,10 @@ const groupBooksForUI = (rawBooks = []) => {
       `${book.title}-${book.author}-${book.edition}-${book.publisher}`;
 
     if (!map[key]) {
-      map[key] = {
-        ...book,
-        acc_list: [],
-        copies: 0
-      };
+      map[key] = { ...book, acc_list: [], copies: 0 };
     }
 
-    const acc =
-      book.acc ||
-      book.accession ||
-      book.accessionNumber ||
-      null;
-
+    const acc = book.acc || book.accession || book.accessionNumber || null;
     if (acc && !map[key].acc_list.includes(acc)) {
       map[key].acc_list.push(acc);
     }
@@ -49,23 +49,23 @@ const groupBooksForUI = (rawBooks = []) => {
   return Object.values(map);
 };
 
-// ======================================================
-// 📚 MAIN HOOK
-// ======================================================
+// ============================================================
+// 📚 MAIN useBooks HOOK
+// ============================================================
 export function useBooks() {
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [books, setBooks]               = useState([]);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState({
+  const [stats, setStats]               = useState({
     totalBooks: 0,
     availableBooks: 0,
-    unavailableBooks: 0
+    unavailableBooks: 0,
   });
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const page = parseInt(searchParams.get("page") || "1", 10);
+  const page  = parseInt(searchParams.get("page") || "1", 10);
   const limit = 10;
 
   const [totalPages, setTotalPages] = useState(1);
@@ -73,20 +73,20 @@ export function useBooks() {
 
   const filters = {
     availability: searchParams.get("availability") || "all",
-    image: searchParams.get("image") || "all",
-    sort: searchParams.get("sort") || "default"
+    image:        searchParams.get("image")        || "all",
+    sort:         searchParams.get("sort")         || "default",
   };
 
-  // ======================================================
-  // 🔄 LOAD BOOKS
-  // ======================================================
+  // ============================================================
+  // 🔄 LOAD BOOKS — used for initial load + refresh
+  // silent=true → no loading spinner (used by polling)
+  // ============================================================
   const loadBooks = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       setError(null);
 
       let booksPromise;
-
       if (filters.availability === 'unavailable') {
         booksPromise = getUnavailableBooks(page, limit);
       } else if (filters.image === 'no-image') {
@@ -99,7 +99,7 @@ export function useBooks() {
 
       const [booksResponse, statsResponse] = await Promise.all([
         booksPromise,
-        getDashboardStats()
+        getDashboardStats(),
       ]);
 
       if (statsResponse?.status === 'success') {
@@ -109,37 +109,26 @@ export function useBooks() {
       if (booksResponse?.status === 'success') {
         let rawBooks = booksResponse.data || [];
 
-        // Secondary filters
         if (filters.image === 'no-image') {
-          rawBooks = rawBooks.filter(
-            b => !b.image && !b.cover_url
-          );
+          rawBooks = rawBooks.filter((b) => !b.image && !b.cover_url);
         }
-
         if (filters.sort === 'most-viewed') {
           rawBooks.sort((a, b) => (b.views || 0) - (a.views || 0));
         }
 
-        // ✅ GROUP DATA FOR UI
-        const groupedBooks = groupBooksForUI(rawBooks);
-        const pagination = booksResponse?.pagination || {};
+        const groupedBooks   = groupBooksForUI(rawBooks);
+        const pagination     = booksResponse?.pagination || {};
 
         const parsedTotalItems = Number(
-          pagination.totalItems ??
-          booksResponse.totalItems ??
-          booksResponse.total ??
-          groupedBooks.length
+          pagination.totalItems ?? booksResponse.totalItems ?? booksResponse.total ?? groupedBooks.length
         );
-
         const safeTotalItems = Number.isFinite(parsedTotalItems) && parsedTotalItems >= 0
           ? parsedTotalItems
           : groupedBooks.length;
 
         const parsedTotalPages = Number(
-          pagination.totalPages ??
-          booksResponse.totalPages
+          pagination.totalPages ?? booksResponse.totalPages
         );
-
         const safeTotalPages = Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
           ? parsedTotalPages
           : Math.max(1, Math.ceil(safeTotalItems / limit));
@@ -156,30 +145,43 @@ export function useBooks() {
       setLoading(false);
     } catch (err) {
       console.error('❌ Load books failed:', err);
-      setError(err.message || 'Failed to load books');
-      setBooks([]);
-      setTotalItems(0);
-      setTotalPages(1);
-      setLoading(false);
+      if (!silent) {
+        setError(err.message || 'Failed to load books');
+        setBooks([]);
+        setTotalItems(0);
+        setTotalPages(1);
+        setLoading(false);
+      }
     }
   }, [
     refreshTrigger,
     page,
     filters.availability,
     filters.image,
-    filters.sort
+    filters.sort,
   ]);
 
+  // Initial load + refresh trigger
   useEffect(() => {
     loadBooks();
   }, [loadBooks]);
 
-  // ======================================================
-  // ➕ ADD BOOK
-  // ======================================================
+  // ✅ Silent polling — har 30s pe background refresh
+  useEffect(() => {
+    const pollId = setInterval(() => {
+      loadBooks(true); // silent = true — no spinner
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(pollId);
+  }, [loadBooks]);
+
+  // ============================================================
+  // ➕ ADD BOOK — triggers instant refresh
+  // ============================================================
   const addBook = async (bookData) => {
     try {
       const response = await apiAddBook(bookData);
+      // ✅ Instant refresh — client sees new book within seconds
       setRefreshTrigger(prev => prev + 1);
       return { success: true, book: response.data };
     } catch (err) {
@@ -187,9 +189,9 @@ export function useBooks() {
     }
   };
 
-  // ======================================================
-  // ✏️ UPDATE BOOK
-  // ======================================================
+  // ============================================================
+  // ✏️ UPDATE BOOK — triggers instant refresh
+  // ============================================================
   const updateBook = async (updatedBookData) => {
     try {
       const bookId = updatedBookData._id || updatedBookData.id;
@@ -202,47 +204,48 @@ export function useBooks() {
       } = updatedBookData;
 
       await apiUpdateBook(bookId, payload);
+      // ✅ Instant refresh
       setRefreshTrigger(prev => prev + 1);
-
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ======================================================
-  // 🗑️ DELETE BOOK
-  // ======================================================
+  // ============================================================
+  // 🗑️ DELETE BOOK — ✅ FIXED: now uses refreshTrigger (consistent)
+  // ============================================================
   const deleteBook = async (bookId) => {
     try {
       await apiDeleteBook(bookId);
-      loadBooks(true);
+      // ✅ FIXED: was loadBooks(true), now consistent with others
+      setRefreshTrigger(prev => prev + 1);
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ======================================================
-  // 🔄 TOGGLE AVAILABILITY
-  // ======================================================
+  // ============================================================
+  // 🔄 TOGGLE AVAILABILITY — triggers instant refresh
+  // ============================================================
   const toggleAvailability = async (bookId) => {
     try {
       const book = books.find(b => (b._id || b.id) === bookId);
       if (!book) throw new Error('Book not found');
 
       await apiToggleAvailability(bookId, book.isAvailable);
+      // ✅ Instant refresh
       setRefreshTrigger(prev => prev + 1);
-
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ======================================================
+  // ============================================================
   // 🔍 SEARCH BOOKS
-  // ======================================================
+  // ============================================================
   const searchBooks = async (query) => {
     try {
       if (!query || query.trim() === '') {
@@ -251,7 +254,6 @@ export function useBooks() {
       }
 
       setLoading(true);
-
       const response = await searchBookByTitle(query);
 
       if (response?.status === 'success') {
@@ -272,16 +274,16 @@ export function useBooks() {
     }
   };
 
-  // ======================================================
-  // 🔄 REFRESH
-  // ======================================================
+  // ============================================================
+  // 🔄 MANUAL REFRESH
+  // ============================================================
   const refreshBooks = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
-  // ======================================================
-  // RETURN
-  // ======================================================
+  // ============================================================
+  // 📤 RETURN
+  // ============================================================
   return {
     books,
     stats,
@@ -314,6 +316,6 @@ export function useBooks() {
         next.set("page", "1");
         return next;
       });
-    }
+    },
   };
 }

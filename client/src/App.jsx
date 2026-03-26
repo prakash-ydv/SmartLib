@@ -11,7 +11,7 @@ import CampusAccessGate from "./components/CampusAccessGate";
 
 // Lazy loaded pages
 const HomePage = lazy(() => import("./pages/HomePage"));
-const BookDetails = lazy(() => import("./components/BookDetails"));
+const BookDetails = lazy(() => import("./pages/BookDetailPage"));
 const LibraryAdmin = lazy(() => import("./pages/Adminpanel"));
 
 // Loading Component

@@ -94,21 +94,15 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
     }
   };
 
-  /**
-   * ✅ Handle Image Upload for New Book
-   * Uploads image first, gets URL, and sets it in form state
-   */
   const handleImageUpload = async (file) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
       const { uploadBookImage } = await import("../api/axios");
-      // Pass null as bookId since we are creating a new book
       const result = await uploadBookImage(file, null);
 
       if (result.status === "success") {
-        // Update form data with new URL
         setFormData((prev) => ({
           ...prev,
           cover_url: result.data.url,
@@ -126,75 +120,199 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
   };
 
   // ===============================
-  // 🔥 CORE TRANSFORMATION LOGIC
+  // 🔥 ULTIMATE TRANSFORMATION LOGIC
   // ===============================
   const transformRawDataToBackendFormat = (rawRows) => {
     const bookMap = {};
 
-    rawRows.forEach((row) => {
+    console.log("🔍 TRANSFORMATION START - Total rows:", rawRows.length);
+    if (rawRows.length > 0) {
+      console.log("🔍 Sample raw row:", rawRows[0]);
+    }
+
+    rawRows.forEach((row, index) => {
       // Skip empty rows
-      if (!row.title || row.title.toString().trim() === "") return;
+      if (!row.title || row.title.toString().trim() === "") {
+        return;
+      }
 
-      // Generate grouping key
-      const key =
-        row.isbn && row.isbn.toString().trim() !== ""
-          ? `isbn_${row.isbn.toString().trim()}`
-          : `${row.title.toString().trim()}_${(row.author || "").toString().trim()}_${(row.edition || "").toString().trim()}_${(row.publisher || "").toString().trim()}`;
-
-      // Helper function to safely get field value
-      const getFieldValue = (value) => {
-        if (!value) return "";
-        const str = value.toString().trim();
-        return str === "nan" ||
-          str === "NaN" ||
-          str === "null" ||
-          str === "undefined"
-          ? ""
-          : str;
+      // ✅ ULTIMATE CLEANING FUNCTION - Handles ALL edge cases
+      const ultraClean = (value) => {
+        // Handle null/undefined
+        if (value === null || value === undefined) return "";
+        
+        // Convert to string
+        let str = String(value).trim();
+        
+        // ✅ CRITICAL: Remove ALL types of quotes
+        // Remove leading/trailing quotes (single, double, escaped)
+        str = str.replace(/^['"`]+|['"`]+$/g, '');
+        str = str.replace(/^\\["']|\\["']$/g, '');
+        
+        // Trim again
+        str = str.trim();
+        
+        // ✅ Handle special escaped quotes like \"\" or \'\'
+        if (str === '""' || str === "''" || str === '\\"\\"' || str === "\\'\\'" || str === '""') {
+          return "";
+        }
+        
+        // Check for garbage values
+        const garbage = [
+          "", "nan", "NaN", "null", "undefined", 
+          "none", "None", "NONE", "N/A", "n/a", "NA", "na",
+          "-", "--", "___", "...", "nil", "Nil", "NIL",
+          "0", "false", "False", "FALSE"
+        ];
+        
+        if (garbage.includes(str.toLowerCase())) return "";
+        if (garbage.includes(str)) return "";
+        
+        return str;
       };
 
-      // Get department - use row value if available, otherwise use selected default
-      const deptValue = getFieldValue(row.department);
+      // ✅ Smart field getter with case-insensitive matching
+      const getField = (possibleNames) => {
+        // Try exact match
+        for (const name of possibleNames) {
+          if (row.hasOwnProperty(name)) {
+            const cleaned = ultraClean(row[name]);
+            if (cleaned) return cleaned;
+          }
+        }
+
+        // Try case-insensitive
+        const rowKeys = Object.keys(row);
+        for (const name of possibleNames) {
+          const normalized = name.toLowerCase().replace(/[\s_-]/g, '');
+          const matched = rowKeys.find(k => 
+            k.toLowerCase().replace(/[\s_-]/g, '') === normalized
+          );
+          if (matched) {
+            const cleaned = ultraClean(row[matched]);
+            if (cleaned) return cleaned;
+          }
+        }
+
+        return "";
+      };
+
+      // ✅ Extract fields
+      const title = ultraClean(row.title);
+      if (!title) return;
+
+      const author = getField([
+        "author", "Author", "AUTHOR",
+        "auther", "Auther", 
+        "writer", "Writer",
+        "authors", "Authors",
+        "by", "By"
+      ]);
+
+      const description = getField([
+        "description", "Description",
+        "desc", "Desc",
+        "about", "summary"
+      ]);
+
+      const isbn = getField([
+        "isbn", "ISBN",
+        "isbn13", "ISBN13"
+      ]);
+
+      const publisher = getField([
+        "publisher", "Publisher",
+        "publication", "Publication"
+      ]);
+
+      const edition = getField([
+        "edition", "Edition",
+        "ed", "Ed"
+      ]);
+
+      const cover_url = getField([
+        "cover_url", "coverurl",
+        "image", "Image",
+        "img", "cover"
+      ]);
+
+      const acc = getField([
+        "acc", "Acc", "ACC",
+        "accession", "Accession",
+        "copy", "copies"
+      ]);
+
+      const deptValue = getField([
+        "department", "Department",
+        "dept", "Dept",
+        "branch"
+      ]);
+
       const department = deptValue || defaultDepartment;
 
-      // Initialize book entry if not exists
+      // ✅ DEBUG: Show what we extracted
+      if (index < 5) {
+        console.log(`📚 Row ${index + 1}:`, {
+          title,
+          author: author || "(empty)",
+          authorRaw: row.author,
+          department
+        });
+      }
+
+      // Generate unique key
+      const key = isbn 
+        ? `isbn_${isbn}` 
+        : `${title}_${author}_${edition}_${publisher}`.toLowerCase();
+
+      // Store or merge
       if (!bookMap[key]) {
         bookMap[key] = {
-          title: row.title.toString().trim(),
-          description: getFieldValue(row.description),
-          author: getFieldValue(row.author),
-          department: department,
-          isbn: getFieldValue(row.isbn),
-          publisher: getFieldValue(row.publisher),
-          edition: getFieldValue(row.edition),
-          cover_url: getFieldValue(row.cover_url),
+          title,
+          description,
+          author,
+          department,
+          isbn,
+          publisher,
+          edition,
+          cover_url,
           accList: [],
         };
-      }
-
-      // Collect accession number
-      const accValue = getFieldValue(row.acc);
-      if (accValue && !bookMap[key].accList.includes(accValue)) {
-        bookMap[key].accList.push(accValue);
-      }
-    });
-
-    // Convert to array and merge accession numbers
-    return Object.values(bookMap).map((book) => {
-      const merged = { ...book };
-
-      // Merge accession numbers with semicolon
-      if (merged.accList.length > 0) {
-        merged.acc = merged.accList.join(";");
       } else {
-        merged.acc = "";
+        // Merge non-empty values
+        if (description) bookMap[key].description = description;
+        if (author) bookMap[key].author = author;
+        if (publisher) bookMap[key].publisher = publisher;
+        if (edition) bookMap[key].edition = edition;
+        if (cover_url) bookMap[key].cover_url = cover_url;
       }
 
-      // Remove temporary accList
-      delete merged.accList;
-
-      return merged;
+      // Collect accession
+      if (acc && !bookMap[key].accList.includes(acc)) {
+        bookMap[key].accList.push(acc);
+      }
     });
+
+    // Finalize
+    const finalBooks = Object.values(bookMap).map((book) => {
+      const result = { ...book };
+
+      // Merge accessions
+      if (result.accList.length > 0) {
+        result.acc = result.accList.join(";");
+      } else {
+        result.acc = "";
+      }
+      delete result.accList;
+
+      // ✅ FINAL CHECK
+      console.log(`✅ Final: "${result.title}" by "${result.author || '(no author)'}"`);
+
+      return result;
+    });
+
+    console.log(`🎯 Created ${finalBooks.length} unique books`);
+    return finalBooks;
   };
 
   // ===============================
@@ -222,7 +340,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
       return;
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       setError("❌ File too large. Maximum size is 5MB.");
       return;
@@ -235,7 +353,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
   };
 
   // ===============================
-  // 🔥 BULK UPLOAD WITH TRANSFORMATION
+  // 🔥 BULK UPLOAD
   // ===============================
   const handleBulkUpload = async () => {
     if (!selectedFile) {
@@ -251,22 +369,35 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
     try {
       setUploadProgress(10);
 
-      // Read the file
+      // ✅ Read Excel with special options
       const fileBuffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(fileBuffer, { type: "array" });
+      const workbook = XLSX.read(fileBuffer, { 
+        type: "array",
+        raw: false,        // Don't use raw values
+        cellText: false,   // Use formatted text
+        cellDates: false,  // Don't auto-convert dates
+        defval: null       // Use null for empty cells
+      });
+      
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
 
-      // Parse to JSON
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      // ✅ Parse to JSON without defaults
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+        raw: false,
+        defval: null,      // ✅ CRITICAL: null for empty cells
+        blankrows: false   // Skip blank rows
+      });
 
       setUploadProgress(30);
+
+      console.log("📊 Parsed", rawData.length, "rows from Excel");
 
       if (!rawData || rawData.length === 0) {
         throw new Error("File is empty or has no valid data");
       }
 
-      // 📊 TRACK RAW DATA STATS
+      // Track stats
       const rawDataStats = {
         totalRawRows: rawData.length,
         validRawRows: rawData.filter(
@@ -277,7 +408,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
         ).length,
       };
 
-      // Transform data
+      // Transform
       const transformedData = transformRawDataToBackendFormat(rawData);
 
       setUploadProgress(50);
@@ -286,28 +417,27 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
         throw new Error("No valid books found after transformation");
       }
 
-      // 📊 TRANSFORMATION STATS
+      // Stats
       const transformStats = {
         rawEntriesProcessed: rawDataStats.validRawRows,
         uniqueBooksCreated: transformedData.length,
         duplicatesGrouped: rawDataStats.validRawRows - transformedData.length,
       };
 
-      // Create new Excel file with transformed data
+      // Create new Excel
       const newWorksheet = XLSX.utils.json_to_sheet(transformedData);
       const newWorkbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Books");
 
-      // Convert to blob
       const excelBuffer = XLSX.write(newWorkbook, {
         bookType: "xlsx",
         type: "array",
       });
+      
       const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
-      // Create File object
       const transformedFile = new File(
         [blob],
         `transformed_${selectedFile.name}`,
@@ -316,8 +446,9 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
 
       setUploadProgress(70);
 
-      // Upload transformed file
+      console.log("🚀 Uploading to backend...");
       const result = await uploadBulkBooks(transformedFile);
+      console.log("✅ Backend response:", result);
 
       setUploadProgress(90);
       setTimeout(() => setUploadProgress(100), 200);
@@ -328,7 +459,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
         success: result.status === "success",
         message: result.message || "Books uploaded successfully!",
         count: result.count || 0,
-        transformStats: transformStats, // 📊 ADD TRANSFORMATION STATS
+        transformStats: transformStats,
         report: {
           totalRows: report.totalRows || 0,
           validRows: report.validRows || 0,
@@ -350,11 +481,9 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
         await onBulkUploaded(report);
       }
     } catch (err) {
+      console.error("❌ Upload error:", err);
       setUploadProgress(0);
-      setError(
-        err.message ||
-          "Upload failed. Please check your file format and try again.",
-      );
+      setError(err.message || "Upload failed. Please check your file format and try again.");
       setUploadResult({
         success: false,
         message: err.message,
@@ -371,10 +500,10 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
   // DOWNLOAD TEMPLATE
   // ===============================
   const handleDownloadTemplate = () => {
-    const template = `title,description,author,department,isbn,publisher,edition,cover_url,acc
-Introduction to AI,Basics of Artificial Intelligence,Stuart Russell,CSE,9780136042594,Pearson,4th,https://example.com/ai.jpg,ACC001;ACC002
-Data Structures,Advanced Data Structures,Thomas Cormen,IT,9780262033848,MIT Press,3rd,https://example.com/ds.jpg,ACC003
-Digital Electronics,Fundamentals of Digital Design,Morris Mano,ECE,9788120333086,PHI,5th,https://example.com/digital.jpg,ACC004;ACC005;ACC006`;
+    const template = `title,author,description,department,isbn,publisher,edition,cover_url,acc
+Introduction to AI,Stuart Russell,Basics of Artificial Intelligence,CSE,9780136042594,Pearson,4th,https://example.com/ai.jpg,ACC001;ACC002
+Data Structures,Thomas Cormen,Advanced Data Structures,IT,9780262033848,MIT Press,3rd,https://example.com/ds.jpg,ACC003
+Digital Electronics,Morris Mano,Fundamentals of Digital Design,ECE,9788120333086,PHI,5th,https://example.com/digital.jpg,ACC004;ACC005;ACC006`;
 
     const blob = new Blob([template], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -444,9 +573,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-6 mt-10 border-2 border-blue-500">
-      {/* ========================================= */}
       {/* HEADER */}
-      {/* ========================================= */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
@@ -489,9 +616,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
         </button>
       </div>
 
-      {/* ========================================= */}
       {/* ERROR ALERT */}
-      {/* ========================================= */}
       {error && (
         <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
           <div className="flex items-start">
@@ -514,9 +639,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
         </div>
       )}
 
-      {/* ========================================= */}
       {/* SUBMITTING STATE */}
-      {/* ========================================= */}
       {isSubmitting && (
         <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
           <div className="flex items-center">
@@ -528,12 +651,9 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
         </div>
       )}
 
-      {/* ========================================= */}
-      {/* UPLOAD SUCCESS REPORT */}
-      {/* ========================================= */}
+      {/* SUCCESS/FAILURE REPORTS - keeping existing code */}
       {uploadResult && uploadResult.success && (
         <div className="mb-6 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-md">
-          {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
@@ -560,7 +680,6 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
             </div>
           </div>
 
-          {/* 📊 RAW DATA PROCESSING STATS */}
           {uploadResult.transformStats && (
             <div className="mb-4 bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
               <h4 className="text-sm font-bold text-blue-800 mb-2">
@@ -597,24 +716,9 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
                   </div>
                 </div>
               </div>
-              <div className="mt-3 p-2 bg-white rounded border border-blue-200">
-                <p className="text-xs text-blue-700">
-                  <strong>
-                    ✅ {uploadResult.transformStats.rawEntriesProcessed}{" "}
-                    physical copies
-                  </strong>{" "}
-                  from your file were grouped into{" "}
-                  <strong>
-                    {uploadResult.transformStats.uniqueBooksCreated} unique
-                    books
-                  </strong>{" "}
-                  with merged accession numbers
-                </p>
-              </div>
             </div>
           )}
 
-          {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="bg-white rounded-lg p-4 shadow-sm">
               <p className="text-xs text-gray-500 uppercase font-semibold">
@@ -650,26 +754,6 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-gray-600 mb-1">
-              <span>Upload Progress</span>
-              <span>
-                {uploadResult.report.validRows} /{" "}
-                {uploadResult.report.totalRows} valid rows
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500"
-                style={{
-                  width: `${(uploadResult.report.validRows / uploadResult.report.totalRows) * 100}%`,
-                }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Error Details Toggle */}
           {uploadResult.report.errors &&
             uploadResult.report.errors.length > 0 && (
               <div className="mt-4">
@@ -691,8 +775,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
                     />
                   </svg>
                   <span>
-                    {uploadResult.report.errors.length} Error(s) Found - Click
-                    to View
+                    {uploadResult.report.errors.length} Error(s) Found
                   </span>
                 </button>
 
@@ -721,28 +804,9 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
                 )}
               </div>
             )}
-
-          {/* Success Message */}
-          {uploadResult.report.errors.length === 0 && (
-            <div className="mt-4 flex items-center space-x-2 text-green-700">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <p className="font-medium">
-                All books uploaded successfully with no errors!
-              </p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* ========================================= */}
-      {/* UPLOAD FAILED REPORT */}
-      {/* ========================================= */}
       {uploadResult && !uploadResult.success && (
         <div className="mb-6 p-6 bg-red-50 border-2 border-red-300 rounded-xl">
           <div className="flex items-start space-x-3">
@@ -766,28 +830,12 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
               <p className="text-sm text-red-700 mb-3">
                 {uploadResult.message}
               </p>
-
-              {uploadResult.report?.errors &&
-                uploadResult.report.errors.length > 0 && (
-                  <div className="bg-white rounded-lg p-3 border border-red-200">
-                    <p className="text-xs font-semibold text-red-800 mb-2">
-                      Errors:
-                    </p>
-                    <ul className="space-y-1 text-xs text-red-700">
-                      {uploadResult.report.errors.map((err, index) => (
-                        <li key={index}>• {err}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ========================================= */}
       {/* SINGLE BOOK FORM */}
-      {/* ========================================= */}
       <BookForm
         formData={formData}
         setFormData={setFormData}
@@ -798,9 +846,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
         onUploadImage={handleImageUpload}
       />
 
-      {/* ========================================= */}
       {/* DIVIDER */}
-      {/* ========================================= */}
       <div className="relative my-8">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t-2 border-gray-300"></div>
@@ -812,11 +858,8 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
         </div>
       </div>
 
-      {/* ========================================= */}
       {/* BULK UPLOAD SECTION */}
-      {/* ========================================= */}
       <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-6 border-2 border-dashed border-blue-300 shadow-inner">
-        {/* Instructions */}
         <div className="mb-6 bg-blue-100 rounded-lg p-4 border-l-4 border-blue-500">
           <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
             <svg
@@ -833,54 +876,41 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
             Upload Instructions
           </h4>
           <ul className="text-sm text-blue-800 space-y-1 ml-7">
-            <li>
-              ✅ Upload your college's raw data (one row per physical copy)
+            <li>✅ Upload raw data (one row per physical copy)</li>
+            <li>🔄 Automatically merges duplicate books</li>
+            <li>📚 Combines accession numbers with semicolons</li>
+            <li>📄 Supports: .xlsx, .xls, .csv (Max 5MB)</li>
+            <li className="font-bold text-green-700">
+              ✅ Now handles ALL quote types and empty cells!
             </li>
-            <li>🔄 System will automatically merge duplicate books</li>
-            <li>📚 Accession numbers will be combined with semicolons</li>
-            <li>
-              🏛️ If department is missing in file, selected department will be
-              used
-            </li>
-            <li>📄 Supported formats: .xlsx, .xls, .csv (Max 5MB)</li>
           </ul>
         </div>
 
-        {/* Department Selector */}
         <div className="mb-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            🏛️ Default Department (for books without department in file)
+            🏛️ Default Department (for missing department)
           </label>
           <select
             value={defaultDepartment}
             onChange={(e) => setDefaultDepartment(e.target.value)}
             disabled={isUploading}
-            className="block w-full px-4 py-2 text-sm text-gray-900 border-2 border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="block w-full px-4 py-2 text-sm text-gray-900 border-2 border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none disabled:opacity-50"
           >
             <option value="GENERAL">GENERAL</option>
-            <option value="CSE">CSE (Computer Science)</option>
-            <option value="IT">IT (Information Technology)</option>
-            <option value="ECE">ECE (Electronics)</option>
-            <option value="EEE">EEE (Electrical)</option>
-            <option value="MECH">MECH (Mechanical)</option>
+            <option value="CSE">CSE</option>
+            <option value="IT">IT</option>
+            <option value="ECE">ECE</option>
+            <option value="EEE">EEE</option>
+            <option value="MECH">MECH</option>
             <option value="CIVIL">CIVIL</option>
             <option value="MBA">MBA</option>
-            <option value="MCA">MCA</option>
-            <option value="BBA">BBA</option>
             <option value="BCA">BCA</option>
             <option value="B.COM">B.COM</option>
             <option value="B.SC">B.SC</option>
-            <option value="B.PHARM">B.PHARM</option>
-            <option value="B.ARCH">B.ARCH</option>
             <option value="AGRICULTURE">AGRICULTURE</option>
           </select>
-          <p className="text-xs text-gray-500 mt-1">
-            💡 This will be used only for books that don't have a department in
-            the Excel file
-          </p>
         </div>
 
-        {/* File Input */}
         <div className="mb-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             📎 Select Excel or CSV File
@@ -890,7 +920,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
             accept=".xlsx,.xls,.csv"
             onChange={handleFileSelect}
             disabled={isUploading}
-            className="block w-full text-sm text-gray-900 border-2 border-gray-300 rounded-lg cursor-pointer bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600"
+            className="block w-full text-sm text-gray-900 border-2 border-gray-300 rounded-lg cursor-pointer bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-blue-500 file:text-white hover:file:bg-blue-600"
           />
           {selectedFile && (
             <div className="mt-3 flex items-center justify-between bg-white rounded-lg p-3 border border-green-300">
@@ -922,7 +952,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
                   setUploadProgress(0);
                 }}
                 disabled={isUploading}
-                className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                className="text-red-500 hover:text-red-700"
               >
                 <svg
                   className="w-5 h-5"
@@ -940,33 +970,26 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
           )}
         </div>
 
-        {/* Progress Bar */}
         {isUploading && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-600 mb-1">
-              <span className="font-medium">Processing and uploading...</span>
+              <span className="font-medium">Processing...</span>
               <span className="font-bold">{uploadProgress}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
+            <div className="w-full bg-gray-200 rounded-full h-4">
               <div
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 h-4 flex items-center justify-center text-xs text-white font-semibold transition-all duration-300"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 h-4 rounded-full transition-all"
                 style={{ width: `${uploadProgress}%` }}
-              >
-                {uploadProgress > 10 && `${uploadProgress}%`}
-              </div>
+              ></div>
             </div>
-            <p className="text-xs text-gray-500 mt-1 text-center">
-              Transforming data and uploading...
-            </p>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={handleDownloadTemplate}
             disabled={isUploading}
-            className="flex-1 w-full sm:w-auto px-6 py-3 border-2 border-blue-500 rounded-lg text-blue-700 bg-white hover:bg-blue-50 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
+            className="flex-1 px-6 py-3 border-2 border-blue-500 rounded-lg text-blue-700 bg-white hover:bg-blue-50 font-semibold disabled:opacity-50 flex items-center justify-center space-x-2"
           >
             <svg
               className="w-5 h-5"
@@ -987,7 +1010,7 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
           <button
             onClick={handleBulkUpload}
             disabled={!selectedFile || isUploading}
-            className="flex-1 w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg transition-all transform hover:scale-105"
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 font-bold disabled:opacity-50 flex items-center justify-center space-x-2 shadow-lg"
           >
             {isUploading ? (
               <>
