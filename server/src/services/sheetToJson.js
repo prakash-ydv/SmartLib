@@ -1,6 +1,17 @@
 import Book from "../models/book.model.js";
 import xlsx from "xlsx";
 
+function generateBatchId(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    return result;
+}
+
 const FIELD_ALIASES = {
     title: ["title", "tittle", "book_title", "name"],
     description: ["description", "desc", "about"],
@@ -58,6 +69,8 @@ const DEPARTMENT_ALIASES = {
     AGRICULTURE: "AGRICULTURE",
     AGRI: "AGRICULTURE",
     AG: "AGRICULTURE",
+    LAW: "LAW",
+    "CYBER LAW": "LAW",
 };
 
 function normalizeKey(value) {
@@ -144,6 +157,9 @@ export async function sheetToJson(sheet) {
 
     const allowedDepartments = new Set(Book.schema.path("department").enumValues);
 
+    // Generate a single batchID for this bulk upload
+    const batchID = generateBatchId(6);
+
     try {
         // ✅ FIX: Remove defval to properly handle empty cells
         const rawData = xlsx.utils.sheet_to_json(sheet);
@@ -175,7 +191,7 @@ export async function sheetToJson(sheet) {
 
             if (!department || !allowedDepartments.has(department)) {
                 report.skipped += 1;
-                report.errors.push(`Row ${rowNumber}: invalid or missing department "${departmentRaw || 'N/A'}"`);
+                report.errors.push(`Row ${rowNumber}: invalid or missing department "${departmentRaw || 'EMPTY'}" (normalized to: "${department || 'null'}")`);
                 return;
             }
 
@@ -198,6 +214,7 @@ export async function sheetToJson(sheet) {
                 edition: cleanValue(editionRaw) || "",
                 cover_url: cleanValue(coverUrlRaw) || "",
                 copies: parseCopies(accRaw),
+                batchID, // Add batchID to each book in the bulk upload
             };
 
             const key = title.toLowerCase();
@@ -242,6 +259,7 @@ export async function sheetToJson(sheet) {
                 existing.edition = book.edition || existing.edition;
                 existing.cover_url = book.cover_url || existing.cover_url;
                 existing.copies = mergedCopies;
+                existing.batchID = existing.batchID || book.batchID; // Preserve existing batchID or set new one
                 existing.updatedAt = new Date();
 
                 await existing.save();

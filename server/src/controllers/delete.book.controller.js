@@ -14,4 +14,21 @@ async function deleteBook(req, res) {
     }
 }
 
-export default deleteBook;
+async function deleteBooksByBatch(req, res) {
+    try {
+        const { batchID } = req.params;
+        const result = await Book.deleteMany({ batchID });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "No books found with this batch ID" });
+        }
+        res.json({ 
+            message: `${result.deletedCount} book(s) deleted successfully`,
+            deletedCount: result.deletedCount
+        });
+    } catch (error) {
+        console.error("Error deleting books by batch:", error);
+        res.status(500).json({ message: "Failed to delete books by batch" });
+    }
+}
+
+export { deleteBook, deleteBooksByBatch };
