@@ -1,9 +1,10 @@
 import router from "express";
 import multer from 'multer';
 import { addBulkBookFromSheet, addOneBook } from "../controllers/add.book.controller.js";
-import {isAdminLoggedIn} from "../middlewares/checkAdminLogedIn.js";
+// import {isAdminLoggedIn} from "../middlewares/checkAdminLogedIn.js"; // ❌ TEMP REMOVED
 
 const storage = multer.memoryStorage();
+
 const upload = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 },
@@ -21,19 +22,25 @@ const upload = multer({
 
 const addBookRouter = router();
 
-addBookRouter.post("/one", isAdminLoggedIn, addOneBook);
+// ✅ ADMIN CHECK REMOVED TEMPORARILY
 
-addBookRouter.post("/bulk/excel", isAdminLoggedIn, upload.single("file"), addBulkBookFromSheet);
-addBookRouter.post("/bulk/upload", isAdminLoggedIn, upload.single("file"), addBulkBookFromSheet);
+addBookRouter.post("/one", addOneBook);
 
+addBookRouter.post("/bulk/excel", upload.single("file"), addBulkBookFromSheet);
+
+addBookRouter.post("/bulk/upload", upload.single("file"), addBulkBookFromSheet);
+
+// Error handler
 addBookRouter.use((error, req, res, next) => {
     if (!error) return next();
+
     if (error instanceof multer.MulterError) {
         return res.status(400).json({
             status: "failed",
             message: error.message,
         });
     }
+
     return res.status(400).json({
         status: "failed",
         message: error.message || "Invalid upload request",
