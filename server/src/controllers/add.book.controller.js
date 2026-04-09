@@ -2,6 +2,17 @@ import xlsx from "xlsx";
 import Book from "../models/book.model.js";
 import { sheetToJson } from "../services/sheetToJson.js";
 
+function generateBatchId(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    return result;
+}
+
 async function addOneBook(req, res) {
 
     const isbn = req.body.isbn ?? null;
@@ -13,6 +24,7 @@ async function addOneBook(req, res) {
     const publisher = req.body.publisher ?? null;
     const edition = req.body.edition ?? null;
     const cover_url = req.body.cover_url ?? null;
+    const  batchID = generateBatchId(6);
 
     // validate required fields
     if (!title || !department) {
@@ -33,7 +45,8 @@ async function addOneBook(req, res) {
             description,
             publisher,
             edition,
-            cover_url
+            cover_url,
+            batchID
         });
 
         console.log("One Book Added");
@@ -72,7 +85,7 @@ async function addBulkBookFromSheet(req, res) {
             });
         }
 
-        const sheet = workbook.Sheets[sheetName];
+        const sheet = workbook.Sheets[sheetName];``
         const result = await sheetToJson(sheet);
 
         if (!result.success) {
