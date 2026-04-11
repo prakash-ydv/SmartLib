@@ -11,7 +11,7 @@ const axiosInstance = axios.create({
   },
 });
 
-// ✅ FIXED: Only ONE request (no loop)
+// ✅ All Books
 export async function getAllBooks(page = 1, limit = 20) {
   try {
     const { data } = await axiosInstance.get(
@@ -25,7 +25,6 @@ export async function getAllBooks(page = 1, limit = 20) {
       data: books,
       pagination: data?.pagination || {},
     };
-
   } catch (error) {
     console.error("❌ getAllBooks error:", error.message);
     throw error;
@@ -50,7 +49,7 @@ export async function getPopularBooks(page = 1, limit = 10) {
   }
 }
 
-// ✅ Update views
+// ✅ Update views (exported as both names to avoid import errors)
 export async function incrementBookViews(bookId) {
   try {
     const { data } = await axiosInstance.patch(
@@ -59,6 +58,20 @@ export async function incrementBookViews(bookId) {
     return data;
   } catch {
     return null;
+  }
+}
+
+// ✅ Alias for incrementBookViews (used in BookDetailPage)
+export const updateBookViews = incrementBookViews;
+
+// ✅ Get Book Description
+export async function getBookDescription(bookId) {
+  try {
+    const { data } = await axiosInstance.get(`/books/${bookId}/description`);
+    return data;
+  } catch (error) {
+    console.error("❌ getBookDescription error:", error.message);
+    throw error;
   }
 }
 
@@ -78,5 +91,7 @@ export default {
   getAllBooks,
   getPopularBooks,
   incrementBookViews,
+  updateBookViews,
+  getBookDescription,
   searchBooks,
 };
