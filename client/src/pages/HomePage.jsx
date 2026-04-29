@@ -4,6 +4,7 @@
 
 import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 // Context
 import { useBooks } from "../context/BookContext";
@@ -15,7 +16,6 @@ import FilterPanel from "../components/FilterPanel";
 import BookCard from "../components/BookCard";
 import Pagination from "../components/Pagination";
 
-
 // ============================================
 // 📦 LOADING SPINNER COMPONENT
 // ============================================
@@ -23,12 +23,14 @@ const LoadingSpinner = ({ size = "md", message }) => {
   const sizes = {
     sm: "h-8 w-8",
     md: "h-12 w-12",
-    lg: "h-16 w-16"
+    lg: "h-16 w-16",
   };
 
   return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center px-4">
-      <div className={`${sizes[size]} animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent mb-4`} />
+      <div
+        className={`${sizes[size]} animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent mb-4`}
+      />
       {message && (
         <p className="text-base md:text-lg text-gray-600 font-medium text-center max-w-md">
           {message}
@@ -46,12 +48,8 @@ function HomePage() {
   const booksGridRef = useRef(null);
 
   // Context
-  const {
-    allBooks,
-    loading,
-    error,
-    refreshBooks,
-  } = useBooks();
+  const { allBooks, loading, error, refreshBooks, fetchBooks, pagination } =
+    useBooks();
 
   // Local State
   const [searchQuery, setSearchQuery] = useState("");
@@ -83,14 +81,15 @@ function HomePage() {
           book.title?.toLowerCase().includes(search) ||
           book.author?.toLowerCase().includes(search) ||
           book.isbn?.toLowerCase().includes(search) ||
-          book.publisher?.toLowerCase().includes(search)
+          book.publisher?.toLowerCase().includes(search),
       );
     }
 
     // Department filter
     if (filters.branch !== "all") {
       result = result.filter(
-        (book) => book.department?.toUpperCase() === filters.branch.toUpperCase()
+        (book) =>
+          book.department?.toUpperCase() === filters.branch.toUpperCase(),
       );
     }
 
@@ -98,7 +97,8 @@ function HomePage() {
     if (filters.availability !== "all") {
       const isAvailable = filters.availability === "available";
       result = result.filter((book) => {
-        const available = book.isAvailable || (book.copies && book.copies.length > 0);
+        const available =
+          book.isAvailable || (book.copies && book.copies.length > 0);
         return available === isAvailable;
       });
     }
@@ -109,14 +109,11 @@ function HomePage() {
   // ============================================
   // 📄 PAGINATION
   // ============================================
-  const paginatedBooks = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredBooks.slice(startIndex, endIndex);
-  }, [filteredBooks, currentPage, itemsPerPage]);
+  const totalPages = pagination.totalPages || 1;
 
-  const totalPages = Math.ceil(filteredBooks.length / itemsPerPage) || 1;
-
+  useEffect(() => {
+    fetchBooks(currentPage, itemsPerPage);
+  }, [currentPage, itemsPerPage]);
   // ============================================
   // 📊 STATISTICS
   // ============================================
@@ -124,11 +121,11 @@ function HomePage() {
     () => ({
       total: allBooks.length,
       available: allBooks.filter(
-        (b) => b.isAvailable || (b.copies && b.copies.length > 0)
+        (b) => b.isAvailable || (b.copies && b.copies.length > 0),
       ).length,
       showing: filteredBooks.length,
     }),
-    [allBooks, filteredBooks]
+    [allBooks, filteredBooks],
   );
 
   // ============================================
@@ -147,8 +144,10 @@ function HomePage() {
     setTimeout(() => {
       if (booksGridRef.current) {
         const headerOffset = 100;
-        const elementPosition = booksGridRef.current.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        const elementPosition =
+          booksGridRef.current.getBoundingClientRect().top;
+        const offsetPosition =
+          elementPosition + window.pageYOffset - headerOffset;
         window.scrollTo({ top: offsetPosition, behavior: "smooth" });
       }
     }, 150);
@@ -176,10 +175,11 @@ function HomePage() {
     if (booksGridRef.current) {
       const headerOffset = 100;
       const elementPosition = booksGridRef.current.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      const offsetPosition =
+        elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({
         top: offsetPosition,
-        behavior: "smooth"
+        behavior: "smooth",
       });
     }
   };
@@ -237,7 +237,6 @@ function HomePage() {
 
       {/* Main Container - Mobile First */}
       <div className="container-custom section-padding">
-
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
           <div className="flex-1">
@@ -287,7 +286,6 @@ function HomePage() {
 
         {/* Books Section */}
         <div className="mt-8 md:mt-12" ref={booksGridRef}>
-
           {/* Section Header - Mobile Optimized */}
           <div className="flex flex-col gap-4 mb-6 md:mb-8">
             <div className="flex items-center gap-3">
@@ -300,7 +298,9 @@ function HomePage() {
             {/* Stats Row - Mobile Friendly */}
             <div className="flex flex-wrap items-center gap-2 md:gap-4">
               <div className="text-xs md:text-sm text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
-                {totalPages > 0 ? `Page ${currentPage} of ${totalPages}` : "No pages"}
+                {totalPages > 0
+                  ? `Page ${currentPage} of ${totalPages}`
+                  : "No pages"}
               </div>
               <div className="text-xs md:text-sm text-gray-600 font-medium bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg">
                 {stats.showing} Showing
@@ -318,12 +318,11 @@ function HomePage() {
               size="lg"
               message="Loading books from MongoDB Atlas..."
             />
-
-          ) : paginatedBooks.length > 0 ? (
+          ) : filteredBooks.length > 0 ? (
             <>
               {/* 📚 Books Grid - Mobile First */}
               <div className="books-grid mb-8 md:mb-12">
-                {paginatedBooks.map((book) => (
+                {filteredBooks.map((book) => (
                   <BookCard
                     key={book._id || book.id}
                     book={book}
@@ -338,7 +337,7 @@ function HomePage() {
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
                 itemsPerPage={itemsPerPage}
-                totalItems={filteredBooks.length}
+                totalItems={pagination.totalItems || 0}
                 onItemsPerPageChange={handleItemsPerPageChange}
               />
             </>
