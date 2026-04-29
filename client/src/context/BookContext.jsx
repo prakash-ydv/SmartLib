@@ -1,94 +1,98 @@
-import { createContext, useState, useContext, useCallback, useEffect } from "react";
+// src/context/BookContext.jsx
+import {
+  createContext,
+  useState,
+  useContext,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { getAllBooks } from "../api/bookAPI";
 
 export const BookContext = createContext(null);
 
 export function BookProvider({ children }) {
-
   const [allBooks, setAllBooks] = useState([]);
-  const [filteredBooks, setFilteredBooks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  // ✅ Guard against double-fetch (StrictMode fires effects twice in dev)
+  const hasFetchedRef = useRef(false);
 
-  // ✅ FIXED FETCH (pagination based)
-  const fetchBooks = useCallback(async (pageNum = 1) => {
+  const fetchAllBooks = useCallback(async () => {
+    // ✅ Prevent duplicate in-flight requests
+    if (loading) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      const response = await getAllBooks(pageNum, 20); // 🔥 limit = 20
+      // Step 1: First page to get total
+      const firstResponse = await getAllBooks(1, 100);
+      const pagination = firstResponse.pagination || {};
+      const totalItems = pagination.total || 0;
+      const firstBatch = firstResponse.data || [];
 
-      const books = response.data?.data || [];
-
-      if (pageNum === 1) {
-        setAllBooks(books);
-      } else {
-        setAllBooks(prev => [...prev, ...books]);
+      if (totalItems === 0 || firstBatch.length === 0) {
+        setAllBooks(firstBatch);
+        return;
       }
 
-      setFilteredBooks(prev => pageNum === 1 ? books : [...prev, ...books]);
+      const limit = 100;
+      const totalPages = Math.ceil(totalItems / limit);
 
-      // ✅ check if more data exists
-      if (books.length < 20) {
-        setHasMore(false);
+      if (totalPages <= 1) {
+        setAllBooks(firstBatch);
+        return;
       }
 
+      // Step 2: Fetch remaining pages in parallel
+      const pagePromises = [];
+      for (let page = 2; page <= totalPages; page++) {
+        pagePromises.push(getAllBooks(page, limit));
+      }
+
+      const responses = await Promise.all(pagePromises);
+      const remainingBooks = responses.flatMap((res) => res.data || []);
+      const allFetchedBooks = [...firstBatch, ...remainingBooks];
+
+      setAllBooks(allFetchedBooks);
+      console.log(`✅ Loaded ${allFetchedBooks.length} books total`);
     } catch (err) {
       console.error("❌ Fetch error:", err.message);
-      setError("Failed to load books");
+
+      // ✅ User-friendly error messages
+      if (err.code === "ECONNABORTED") {
+        setError("Server is waking up, please wait a moment and try again.");
+      } else if (!err.response) {
+        setError("Cannot reach the server. Check your connection.");
+      } else {
+        setError("Failed to load books. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // ✅ No deps — stable reference, won't re-create
 
-  // ✅ Initial load (ONLY ONCE)
+  // ✅ Force refresh — clears cache guard too
+  const refreshBooks = useCallback(() => {
+    hasFetchedRef.current = false;
+    setAllBooks([]);
+    setError(null);
+    fetchAllBooks();
+  }, [fetchAllBooks]);
+
+  // ✅ Single fetch on mount — not duplicated in HomePage
   useEffect(() => {
-    fetchBooks(1);
-  }, []);
-
-  // ✅ Load more (for infinite scroll / button)
-  const loadMoreBooks = useCallback(() => {
-    if (!hasMore || loading) return;
-
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchBooks(nextPage);
-  }, [page, hasMore, loading, fetchBooks]);
-
-  // ✅ Search (local)
-  const searchBooks = useCallback((query) => {
-    if (!query.trim()) {
-      setFilteredBooks(allBooks);
-      return;
-    }
-
-    const search = query.toLowerCase();
-
-    const filtered = allBooks.filter(book =>
-      book.title?.toLowerCase().includes(search) ||
-      book.author?.toLowerCase().includes(search)
-    );
-
-    setFilteredBooks(filtered);
-  }, [allBooks]);
-
-  const contextValue = {
-    allBooks,
-    filteredBooks,
-    loading,
-    error,
-    hasMore,
-
-    fetchBooks,
-    loadMoreBooks,
-    searchBooks
-  };
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    fetchAllBooks();
+  }, [fetchAllBooks]);
 
   return (
-    <BookContext.Provider value={contextValue}>
+    <BookContext.Provider
+      value={{ allBooks, loading, error, fetchAllBooks, refreshBooks }}
+    >
       {children}
     </BookContext.Provider>
   );

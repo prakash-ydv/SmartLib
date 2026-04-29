@@ -2,7 +2,7 @@
 // 🏠 HOME PAGE - MOBILE-FIRST OPTIMIZED
 // ============================================
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Context
@@ -50,12 +50,10 @@ function HomePage() {
     allBooks,
     loading,
     error,
-    fetchAllBooks,
     refreshBooks,
   } = useBooks();
 
   // Local State
-  // ✅ FIXED: renamed searchQuery → searchQuery to match SearchBar props
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     branch: "all",
@@ -67,12 +65,9 @@ function HomePage() {
   const [itemsPerPage, setItemsPerPage] = useState(24);
 
   // ============================================
-  // 🔄 INITIAL DATA LOAD
+  // ✅ REMOVED: duplicate fetchAllBooks useEffect
+  // BookContext already fetches on mount — no need to fetch again here
   // ============================================
-  useEffect(() => {
-    console.log("📚 HomePage: Loading books...");
-    fetchAllBooks();
-  }, [fetchAllBooks]);
 
   // ============================================
   // 🔍 FILTER BOOKS (Client-side)
@@ -145,11 +140,10 @@ function HomePage() {
     setCurrentPage(1);
   };
 
-  // ✅ CHANGE 1: Hero search handler — sets searchQuery AND scrolls to catalog
+  // ✅ Hero search handler — sets searchQuery AND scrolls to catalog
   const handleHeroSearch = (term) => {
     setSearchQuery(term);
     setCurrentPage(1);
-    // Small delay so filteredBooks re-renders before scroll
     setTimeout(() => {
       if (booksGridRef.current) {
         const headerOffset = 100;
@@ -179,12 +173,10 @@ function HomePage() {
   const handlePageChange = (page) => {
     setCurrentPage(page);
 
-    // Smart scroll to grid top
     if (booksGridRef.current) {
-      const headerOffset = 100; // Account for fixed header
+      const headerOffset = 100;
       const elementPosition = booksGridRef.current.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-
       window.scrollTo({
         top: offsetPosition,
         behavior: "smooth"
@@ -241,7 +233,6 @@ function HomePage() {
   // ============================================
   return (
     <>
-      {/* ✅ CHANGE 2: Hero gets onSearch prop — connects hero search to catalog filter */}
       <Hero onSearch={handleHeroSearch} />
 
       {/* Main Container - Mobile First */}
