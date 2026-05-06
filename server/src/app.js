@@ -11,15 +11,15 @@ import deleteBookRouter from "./routes/delete.book.route.js";
 import dashboardRouter from "./routes/dashboard.route.js";
 import featureRouter from "./routes/feature.route.js";
 import uploadRouter from "./routes/upload.route.js";
+import bookRouter from "./routes/book.route.js";
 
 dotenv.config();
 
 const app = express();
 
-// ✅ Allowed origins
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
-  .map((o) => o.trim())
+  .map((origin) => origin.trim())
   .filter(Boolean);
 
 const DEFAULT_ORIGINS = [
@@ -33,34 +33,30 @@ const DEFAULT_ORIGINS = [
 
 const ALL_ORIGINS = [...new Set([...ALLOWED_ORIGINS, ...DEFAULT_ORIGINS])];
 
-// ✅ CORS (FINAL SAFE VERSION)
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log("🌐 Origin:", origin);
-
       if (!origin) return callback(null, true);
 
-      if (
+      const isLocalhost =
         origin.startsWith("http://localhost") ||
-        origin.startsWith("http://127.0.0.1") ||
-        ALL_ORIGINS.includes(origin)
-      ) {
+        origin.startsWith("http://127.0.0.1");
+
+      if (isLocalhost || ALL_ORIGINS.includes(origin)) {
         return callback(null, true);
       }
 
-      console.warn(`🚫 Blocked by CORS: ${origin}`);
-      return callback(null, true); // ✅ allow for now (safe dev)
+      console.warn(`Blocked by CORS: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
 
-// ✅ Middlewares
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ✅ Routes
 app.use("/add", addBookRouter);
 app.use("/search", searchBookRouter);
 app.use("/update", updateBookRouter);
@@ -69,20 +65,19 @@ app.use("/dashboard", dashboardRouter);
 app.use("/feature", featureRouter);
 app.use("/upload", uploadRouter);
 app.use("/admin", adminRouter);
+app.use("/books", bookRouter);
 
-// ✅ Health check
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
-    message: "SmartLib API running 🚀",
+    message: "SmartLib API running",
   });
 });
 
-// ✅ Global error handler
 app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.message);
+  console.error("Error:", err.message);
   res.status(err.status || 500).json({
-    success: false,
+    status: "failed",
     message: err.message || "Internal Server Error",
   });
 });

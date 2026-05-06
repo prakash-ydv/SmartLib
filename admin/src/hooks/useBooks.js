@@ -154,7 +154,6 @@ export function useBooks() {
       }
     }
   }, [
-    refreshTrigger,
     page,
     filters.availability,
     filters.image,
@@ -164,7 +163,7 @@ export function useBooks() {
   // Initial load + refresh trigger
   useEffect(() => {
     loadBooks();
-  }, [loadBooks]);
+  }, [loadBooks, refreshTrigger]);
 
   // ✅ Silent polling — har 30s pe background refresh
   useEffect(() => {
@@ -197,11 +196,15 @@ export function useBooks() {
       const bookId = updatedBookData._id || updatedBookData.id;
       if (!bookId) throw new Error('Book ID missing');
 
-      const {
-        _id, id, createdAt, updatedAt, views, __v,
-        acc_list, copies,
-        ...payload
-      } = updatedBookData;
+      const payload = { ...updatedBookData };
+      delete payload._id;
+      delete payload.id;
+      delete payload.createdAt;
+      delete payload.updatedAt;
+      delete payload.views;
+      delete payload.__v;
+      delete payload.acc_list;
+      delete payload.copies;
 
       await apiUpdateBook(bookId, payload);
       // ✅ Instant refresh

@@ -91,8 +91,12 @@ export default function BookDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // ✅ allBooks aur contextLoading bhi lo
-  const { getBookFromCache, allBooks, loading: contextLoading } = useBooks();
+  const {
+    getBookFromCache,
+    fetchBookById,
+    allBooks,
+    loading: contextLoading,
+  } = useBooks();
 
   // State
   const [book, setBook] = useState(null);
@@ -109,22 +113,17 @@ export default function BookDetailPage() {
   // id ya allBooks change hone pe re-run hoga
   // ============================================
   useEffect(() => {
-    // ✅ Books abhi load ho rahi hain — wait karo
-    if (contextLoading || allBooks.length === 0) {
-      setLoading(true);
-      return;
-    }
     fetchBookDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, contextLoading, allBooks]);
+  }, [id, allBooks]);
 
-  const fetchBookDetail = () => {
+  const fetchBookDetail = async () => {
     setLoading(true);
     setError(null);
     setImageError(false); // ✅ naye book pe image error reset
 
     try {
-      const bookData = getBookFromCache(id);
+      const bookData = getBookFromCache(id) || (await fetchBookById(id));
 
       if (!bookData) {
         setError("Book not found. Please go back and try again.");

@@ -113,7 +113,7 @@ function HomePage() {
 
   useEffect(() => {
     fetchBooks(currentPage, itemsPerPage);
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, fetchBooks]);
   // ============================================
   // 📊 STATISTICS
   // ============================================

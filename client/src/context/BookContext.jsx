@@ -1,9 +1,11 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
+  useCallback,
   useState,
   useContext,
 } from "react";
-import { getAllBooks } from "../api/bookAPI";
+import { getAllBooks, getBookById } from "../api/bookAPI";
 
 export const BookContext = createContext(null);
 
@@ -13,7 +15,7 @@ export function BookProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchBooks = async (page = 1, limit = 24) => {
+  const fetchBooks = useCallback(async (page = 1, limit = 24) => {
     try {
       setLoading(true);
       setError(null);
@@ -28,11 +30,33 @@ export function BookProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const refreshBooks = () => {
+  const refreshBooks = useCallback(() => {
     fetchBooks(1, 24);
-  };
+  }, [fetchBooks]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const getBookFromCache = useCallback(
+    (bookId) => {
+      if (!bookId) return null;
+      return allBooks.find((book) => (book._id || book.id) === bookId) || null;
+    },
+    [allBooks],
+  );
+
+  const fetchBookById = useCallback(
+    async (bookId) => {
+      const cachedBook = getBookFromCache(bookId);
+      if (cachedBook) return cachedBook;
+
+      return getBookById(bookId);
+    },
+    [getBookFromCache],
+  );
 
   return (
     <BookContext.Provider
@@ -43,6 +67,9 @@ export function BookProvider({ children }) {
         error,
         fetchBooks,
         refreshBooks,
+        clearError,
+        getBookFromCache,
+        fetchBookById,
       }}
     >
       {children}

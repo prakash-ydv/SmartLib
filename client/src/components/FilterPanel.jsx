@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import React, { useState, useRef, useEffect } from "react";
 import {
   Filter, RotateCcw, ChevronDown, BookOpen,
   CheckCircle, TrendingUp, X, Search, ChevronUp
@@ -485,7 +486,6 @@ const DepartmentPicker = ({ value, onChange }) => {
                   {/* Category tabs — left column */}
                   <div className="w-28 shrink-0 overflow-y-auto border-r border-gray-100 py-2">
                     {DEPARTMENT_GROUPS.map((grp, i) => {
-                      const colors = COLOR_MAP[grp.color] || COLOR_MAP.gray;
                       const isActive = activeGroup === i;
                       return (
                         <button

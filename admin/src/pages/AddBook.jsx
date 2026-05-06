@@ -68,7 +68,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
 
     try {
       const cleanData = Object.fromEntries(
-        Object.entries(formData).filter(([_, v]) => {
+        Object.entries(formData).filter(([, v]) => {
           if (Array.isArray(v)) return v.length > 0;
           return v !== "" && v !== null && v !== undefined;
         }),
@@ -175,7 +175,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
       const getField = (possibleNames) => {
         // Try exact match
         for (const name of possibleNames) {
-          if (row.hasOwnProperty(name)) {
+          if (Object.prototype.hasOwnProperty.call(row, name)) {
             const cleaned = ultraClean(row[name]);
             if (cleaned) return cleaned;
           }

@@ -4,7 +4,7 @@
 // File: src/components/common/SearchBar.jsx
 // ============================================================
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   Search, X, ChevronDown, SlidersHorizontal, RotateCcw,
 } from "lucide-react";

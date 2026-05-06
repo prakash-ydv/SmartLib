@@ -1,6 +1,7 @@
 import adminModel from "../models/admin.model.js";
 import { hashPassword, comparePassword } from "../config/hashPassword.js";
 import { generateToken } from "../config/jwt.js";
+import { verifyToken } from "../config/jwt.js";
 
 function getCookieOptions() {
     const isProduction = process.env.NODE_ENV === "production";
@@ -21,8 +22,26 @@ async function createAdminRoute(req, res) {
             return res.status(400).json({ status: "failed", message: "All fields are required" });
         }
 
+        const existingAdminCount = await adminModel.countDocuments();
+
+        if (existingAdminCount > 0) {
+            const token = req.cookies.token;
+
+            if (!token) {
+                return res.status(401).json({ status: "failed", message: "Unauthorized" });
+            }
+
+            const decodedToken = verifyToken(token);
+            const requestingAdmin = await adminModel.findById(decodedToken.id);
+
+            if (!requestingAdmin) {
+                return res.status(401).json({ status: "failed", message: "Unauthorized" });
+            }
+        }
+
         // check if admin already exists
-        const admin = await adminModel.findOne({ email });
+        const normalizedEmail = email.trim().toLowerCase();
+        const admin = await adminModel.findOne({ email: normalizedEmail });
         if (admin) {
             return res.status(400).json({ status: "failed", message: "Admin already exists" });
         }
@@ -31,7 +50,7 @@ async function createAdminRoute(req, res) {
         const hashedPassword = await hashPassword(password);
 
         // create admin
-        const newAdmin = await adminModel.create({ name, email, password: hashedPassword });
+        const newAdmin = await adminModel.create({ name: name.trim(), email: normalizedEmail, password: hashedPassword });
 
         // generate token
         const token = generateToken({ id: newAdmin._id });

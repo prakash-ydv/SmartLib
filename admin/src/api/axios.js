@@ -140,7 +140,7 @@ export const checkAuth = async () => {
     if (data.status === 'success') {
       return true;
     }
-  } catch (error) {
+  } catch {
     // ✅ API failed, but localStorage says authenticated, so trust it
     console.log("📝 Using localStorage auth (API unavailable)");
   }
@@ -148,6 +148,9 @@ export const checkAuth = async () => {
   // Trust localStorage
   return isAuthStored;
 };
+
+export const isAuthenticated = () =>
+  localStorage.getItem('isAuthenticated') === 'true';
 
 // ------------------------------------------------------------------
 // 📚 BOOK FUNCTIONS

@@ -55,6 +55,37 @@ export async function getAllBooks(page = 1, limit = 100) {
   }
 }
 
+// ✅ Single Book
+// Preferred endpoint is /books/:id. The fallback keeps the page working with
+// older backend deployments that only expose paginated listing endpoints.
+export async function getBookById(bookId) {
+  if (!bookId) return null;
+
+  try {
+    const { data } = await axiosInstance.get(`/books/${bookId}`);
+    return data?.data || null;
+  } catch (error) {
+    if (error.response && error.response.status !== 404) {
+      console.warn("⚠️ getBookById direct lookup failed:", error.message);
+    }
+  }
+
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await getAllBooks(page, 50);
+    const book = (res.data || []).find((item) => (item._id || item.id) === bookId);
+
+    if (book) return book;
+
+    totalPages = Number(res.pagination?.totalPages || 1);
+    page += 1;
+  } while (page <= totalPages);
+
+  return null;
+}
+
 // ✅ Popular Books
 export async function getPopularBooks(page = 1, limit = 10) {
   try {
@@ -89,8 +120,8 @@ export const updateBookViews = incrementBookViews;
 // ✅ Get Book Description
 export async function getBookDescription(bookId) {
   try {
-    const { data } = await axiosInstance.get(`/books/${bookId}/description`);
-    return data;
+    const { data } = await axiosInstance.get(`/feature/description/${bookId}`);
+    return data?.description || "";
   } catch (error) {
     console.error("❌ getBookDescription error:", error.message);
     throw error;
@@ -110,11 +141,46 @@ export async function searchBooks(query) {
   }
 }
 
+export function getDepartmentsList() {
+  return [
+    "ALL",
+    "CSE",
+    "IT",
+    "ECE",
+    "EEE",
+    "MECH",
+    "CIVIL",
+    "MBA",
+    "MCA",
+    "BBA",
+    "BCA",
+    "B.COM",
+    "B.SC",
+    "B.PHARM",
+    "B.ARCH",
+    "B.DES",
+    "B.ED",
+    "B.LLB",
+    "B.PT",
+    "B.HM",
+    "B.MS",
+    "B.AS",
+    "B.FA",
+    "B.FT",
+    "AGRICULTURE",
+    "D.Pharma",
+    "LAW",
+    "AYURVEDA",
+  ];
+}
+
 export default {
   getAllBooks,
+  getBookById,
   getPopularBooks,
   incrementBookViews,
   updateBookViews,
   getBookDescription,
   searchBooks,
+  getDepartmentsList,
 };

@@ -147,12 +147,20 @@ async function searchBooksWithoutImage(req, res) {
   try {
     const { page, limit, skip } = getPagination(req);
 
+    const withoutCoverQuery = {
+      $or: [
+        { cover_url: { $exists: false } },
+        { cover_url: null },
+        { cover_url: "" }
+      ]
+    };
+
     const [books, total] = await Promise.all([
-      Book.find({ image: null })
+      Book.find(withoutCoverQuery)
         .skip(skip)
         .limit(limit)
         .lean(),
-      Book.countDocuments({ image: null })
+      Book.countDocuments(withoutCoverQuery)
     ]);
 
     return res.status(200).json({
