@@ -1,5 +1,5 @@
 import React from "react";
-import { DEPARTMENTS } from "../../api/axios";
+import { DEPARTMENTS } from "../../constants/catalog";
 
 /**
  * 📝 Reusable Book Form Component - REAL BACKEND SCHEMA

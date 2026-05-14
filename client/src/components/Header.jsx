@@ -1,17 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import { QrCode, Menu, X, BookOpen } from "lucide-react";
 import logo from "../assets/logo.png";
+import { useBooks } from "../context/BookContext";
+import { DEPARTMENTS, formatCount } from "../utils/bookDisplay";
 
 // ============================================================
-// 🏛️ IES UNIVERSITY SMARTLIB — PRODUCTION HEADER
+// 🏛️ IES UNIVERSITY SMARTLIB - PRODUCTION HEADER
 // Mobile-first | Institutional | Dark Navy Base
 // ============================================================
 
 const Header = () => {
+  const { pagination } = useBooks();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [qrTooltipOpen, setQrTooltipOpen] = useState(false);
   const qrRef = useRef(null);
+  const liveBookCount = pagination?.totalItems
+    ? `${formatCount(pagination.totalItems)} books`
+    : "Live catalog";
+  const departmentCount = DEPARTMENTS.length;
 
   // ── Scroll detection ──────────────────────────────────────
   useEffect(() => {
@@ -77,7 +84,7 @@ const Header = () => {
             <a
               href="/"
               className="flex items-center gap-4 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl"
-              aria-label="IES University SmartLib — Home"
+              aria-label="IES University SmartLib - Home"
             >
               {/* Logo block */}
               <div className="relative shrink-0">
@@ -121,7 +128,7 @@ const Header = () => {
                     scrolled ? "text-blue-600" : "text-blue-300"
                   }`}
                 >
-                  SmartLib — Digital Catalog
+                  SmartLib - Digital Catalog
                 </p>
               </div>
             </a>
@@ -141,7 +148,7 @@ const Header = () => {
                   className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0"
                   aria-hidden="true"
                 />
-                30,000+ copies
+                {liveBookCount}
               </div>
 
               {/* QR Code button */}
@@ -167,7 +174,7 @@ const Header = () => {
                     aria-label="QR Code access information"
                     className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white shadow-2xl border border-gray-100 p-4 animate-in slide-in-from-top z-50"
                   >
-                    {/* QR placeholder — replace with actual QR image */}
+                    {/* QR placeholder - replace with actual QR image */}
                     <div className="flex items-center justify-center w-full h-32 bg-gray-50 rounded-xl mb-3 border border-gray-200">
                       <div className="text-center">
                         <QrCode className="h-12 w-12 text-indigo-400 mx-auto mb-1" />
@@ -186,7 +193,7 @@ const Header = () => {
                     <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                       <p className="text-[10px] text-gray-400 font-medium">
-                        Geolocation secured · Campus only
+                        Public catalog - live library data
                       </p>
                     </div>
                   </div>
@@ -229,7 +236,7 @@ const Header = () => {
       </header>
 
       {/* ══════════════════════════════════════════════════════
-          MOBILE MENU — Full screen overlay
+          MOBILE MENU - Full screen overlay
       ══════════════════════════════════════════════════════ */}
       {mobileMenuOpen && (
         <div
@@ -253,7 +260,7 @@ const Header = () => {
           />
 
           <div className="relative flex flex-col h-full px-5 pt-8 pb-10">
-            {/* Institution name — large */}
+            {/* Institution name - large */}
             <div className="mb-10">
               <p className="text-xs font-semibold tracking-widest text-blue-400 uppercase mb-2">
                 IES University
@@ -266,7 +273,7 @@ const Header = () => {
               </p>
             </div>
 
-            {/* QR section — prominent in mobile */}
+            {/* QR section - prominent in mobile */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5 mb-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 p-3 rounded-xl bg-indigo-600/20 border border-indigo-500/30">
@@ -295,7 +302,7 @@ const Header = () => {
                   aria-hidden="true"
                 />
                 <span className="text-xs text-white/60 font-medium">
-                  30,000+ copies
+                  {liveBookCount}
                 </span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
@@ -304,7 +311,7 @@ const Header = () => {
                   aria-hidden="true"
                 />
                 <span className="text-xs text-white/60 font-medium">
-                  104 departments
+                  {departmentCount} departments
                 </span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
@@ -313,7 +320,7 @@ const Header = () => {
                   aria-hidden="true"
                 />
                 <span className="text-xs text-white/60 font-medium">
-                  Campus secured
+                  Live catalog
                 </span>
               </div>
             </div>
@@ -333,3 +340,4 @@ const Header = () => {
 };
 
 export default Header;
+

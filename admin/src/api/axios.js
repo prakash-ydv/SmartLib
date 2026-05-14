@@ -1,333 +1,191 @@
+import { DEPARTMENTS } from "../constants/catalog";
+
 const configuredServerUrl = import.meta.env.VITE_SERVER_URL?.trim();
-const VITE_SERVER_URL = configuredServerUrl || '/api';
-const VERIFY_AUTH_ENDPOINT = import.meta.env.VITE_VERIFY_AUTH_ENDPOINT === 'true';
+const VITE_SERVER_URL = configuredServerUrl || "/api";
 
-const getAuthToken = () =>
-  localStorage.getItem('token') || localStorage.getItem('adminToken') || '';
-
-const clearAuthToken = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('adminToken');
+const clearAuthState = () => {
+  localStorage.removeItem("isAuthenticated");
+  localStorage.removeItem("adminData");
+  localStorage.removeItem("token");
+  localStorage.removeItem("adminToken");
 };
 
-// ------------------------------------------------------------------
-// 🌐 MAIN API CALL FUNCTION
-// ------------------------------------------------------------------
+const buildQuery = (params = {}) => {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "" && value !== "all") {
+      query.set(key, String(value));
+    }
+  });
+
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : "";
+};
+
 const apiCall = async (endpoint, options = {}) => {
   const headers = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...options.headers,
   };
 
-  const config = {
-    method: options.method || 'GET',
-    headers: headers,
-    ...(options.body && { body: JSON.stringify(options.body) }),
-    credentials: 'include',
-  };
+  const response = await fetch(`${VITE_SERVER_URL}${endpoint}`, {
+    method: options.method || "GET",
+    headers,
+    body:
+      options.body instanceof FormData
+        ? options.body
+        : options.body
+          ? JSON.stringify(options.body)
+          : undefined,
+    credentials: "include",
+  });
 
-  try {
-    const response = await fetch(`${VITE_SERVER_URL}${endpoint}`, config);
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json")
+    ? await response.json()
+    : { message: await response.text() };
 
-    // ✅ Special handling for /admin/me 404
-    if (!response.ok && response.status === 404 && endpoint === '/admin/me') {
-      throw new Error('AUTH_ENDPOINT_NOT_FOUND');
-    }
-
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
-
-    if (!isJson) {
-      if (endpoint !== '/admin/me') {
-        console.error(`❌ API Error: Expected JSON but got ${contentType}`);
-      }
-      throw new Error('Server returned an invalid response');
-    }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.error("❌ Unauthorized! Token missing or expired.");
-        // ✅ Clear auth on 401
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('adminData');
-      }
-      if (response.status === 404 && endpoint !== '/admin/me') {
-        console.error(`❌ Endpoint not found: ${endpoint}`);
-      }
-      throw new Error(data.message || data.error || 'Request failed');
-    }
-
-    return data;
-  } catch (error) {
-    if (endpoint !== '/admin/me' || !error.message?.includes('AUTH_ENDPOINT_NOT_FOUND')) {
-      console.error('API Error:', error);
-    }
-    throw error;
+  if (!response.ok) {
+    if (response.status === 401) clearAuthState();
+    throw new Error(data.message || data.error || "Request failed");
   }
+
+  return data;
 };
 
-// ------------------------------------------------------------------
-// 🔑 AUTHENTICATION FUNCTIONS
-// ------------------------------------------------------------------
-
 export const adminLogin = async (email, password) => {
-  console.log("🔑 Logging in...");
+  const data = await apiCall("/admin/login", {
+    method: "POST",
+    body: { email: email.trim().toLowerCase(), password },
+  });
 
-  try {
-    const data = await apiCall('/admin/login', {
-      method: 'POST',
-      body: { email, password },
-    });
-
-    if (data.status === 'success') {
-      console.log("✅ Login Success!");
-
-      // ✅ Store auth in localStorage
-      localStorage.setItem('isAuthenticated', 'true');
-      if (data.admin) {
-        localStorage.setItem('adminData', JSON.stringify(data.admin));
-      }
-    }
-
-    return data;
-  } catch (error) {
-    console.error("❌ Login failed:", error);
-    throw error;
+  if (data.status === "success") {
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("adminData", JSON.stringify(data.data || null));
   }
+
+  return data;
 };
 
 export const adminLogout = async () => {
   try {
-    await apiCall('/admin/logout', { method: 'POST' });
-  } catch (error) {
-    console.error("Logout failed", error);
+    await apiCall("/admin/logout", { method: "POST" });
+  } finally {
+    clearAuthState();
   }
-
-  // ✅ Clear localStorage
-  localStorage.removeItem('isAuthenticated');
-  localStorage.removeItem('adminData');
-
-  window.location.replace('/login');
 };
 
-// ✅ FIXED: Use localStorage as primary, API as fallback
 export const checkAuth = async () => {
-  // First check localStorage
-  const isAuthStored = localStorage.getItem('isAuthenticated') === 'true';
-
-  if (!isAuthStored) {
-    return false;
-  }
-
-  // Default behavior: trust localStorage unless explicitly enabled
-  if (!VERIFY_AUTH_ENDPOINT) {
-    return true;
-  }
-
-  // Try API verification (optional, won't fail if endpoint missing)
   try {
-    const data = await apiCall('/admin/me', {
+    const data = await apiCall("/admin/me", {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      }
+        "Cache-Control": "no-store",
+      },
     });
 
-    if (data.status === 'success') {
+    if (data.status === "success") {
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("adminData", JSON.stringify(data.data || null));
       return true;
     }
   } catch {
-    // ✅ API failed, but localStorage says authenticated, so trust it
-    console.log("📝 Using localStorage auth (API unavailable)");
+    clearAuthState();
   }
 
-  // Trust localStorage
-  return isAuthStored;
+  return false;
 };
 
 export const isAuthenticated = () =>
-  localStorage.getItem('isAuthenticated') === 'true';
+  localStorage.getItem("isAuthenticated") === "true";
 
-// ------------------------------------------------------------------
-// 📚 BOOK FUNCTIONS
-// ------------------------------------------------------------------
-
-export const addBook = async (bookData) => {
-  console.log("📚 Adding book...");
-  return await apiCall('/add/one', {
-    method: 'POST',
+export const addBook = async (bookData) =>
+  apiCall("/add/one", {
+    method: "POST",
     body: bookData,
   });
-};
 
-// ✅ Bulk upload function
 export const uploadBulkBooks = async (file) => {
-  console.log("📤 Uploading bulk books...");
-
-  const token = getAuthToken();
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
-  try {
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    const endpoints = ['/add/bulk/upload', '/add/bulk/excel'];
-    let lastError = null;
-
-    for (const endpoint of endpoints) {
-      const response = await fetch(`${VITE_SERVER_URL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: formData,
-        credentials: 'include',
-      });
-
-      const contentType = response.headers.get('content-type') || '';
-      const isJson = contentType.includes('application/json');
-      const data = isJson ? await response.json() : { message: await response.text() };
-
-      if (response.ok) {
-        return data;
-      }
-
-      if (response.status === 404) {
-        lastError = new Error(`Endpoint not found: ${endpoint}`);
-        continue;
-      }
-
-      if (response.status === 401) {
-        clearAuthToken();
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('adminData');
-      }
-
-      const reportErrors = data?.report?.errors;
-      if (Array.isArray(reportErrors) && reportErrors.length > 0) {
-        console.warn('⚠️ Upload had some issues:', reportErrors);
-        if (data.report?.inserted > 0 || data.report?.updated > 0) {
-          return data;
-        }
-      }
-
-      const reportMessage = data.message || data.error || `Upload failed at ${endpoint}`;
-      throw new Error(reportMessage);
-    }
-
-    throw lastError || new Error('Bulk upload endpoint not found on backend');
-  } catch (error) {
-    console.error('❌ Bulk upload error:', error);
-    throw error;
-  }
+  return apiCall("/add/bulk/upload", {
+    method: "POST",
+    body: formData,
+  });
 };
 
-export const updateBook = async (bookId, updateData) => {
-  console.log("✏️ Updating book...");
-  return await apiCall(`/update/book/${bookId}`, {
-    method: 'PATCH',
+export const updateBook = async (bookId, updateData) =>
+  apiCall(`/update/book/${bookId}`, {
+    method: "PATCH",
     body: updateData,
   });
-};
 
-export const searchBookByTitle = async (title) => {
-  return await apiCall(`/search/book?title=${encodeURIComponent(title)}`);
-};
+export const searchBookByTitle = async (title) =>
+  apiCall(`/search/book${buildQuery({ title })}`);
 
-// ✅ FIX: Use backend's existing endpoints
-export const getAllBooks = async (page = 1, limit = 20) => {
-  console.log(`🔍 Fetching all books: page ${page}, limit ${limit}`);
-  return await apiCall(`/search/all-books?page=${page}&limit=${limit}`);
-};
+export const getAllBooks = async (page = 1, limit = 20, filters = {}) =>
+  apiCall(
+    `/search/all-books${buildQuery({
+      page,
+      limit,
+      q: filters.q,
+      department: filters.department,
+      availability: filters.availability,
+    })}`,
+  );
 
-export const getUnavailableBooks = async (page = 1, limit = 20) => {
-  console.log(`🔍 Fetching unavailable books: page ${page}, limit ${limit}`);
-  return await apiCall(`/search/unavailable-books?page=${page}&limit=${limit}`);
-};
+export const getUnavailableBooks = async (page = 1, limit = 20, filters = {}) =>
+  getAllBooks(page, limit, { ...filters, availability: "unavailable" });
 
-// ✅ FIX: Backend uses 'image' field, not 'cover_url'
-export const getBooksWithoutImage = async (page = 1, limit = 20) => {
-  console.log(`🔍 Fetching books without image: page ${page}, limit ${limit}`);
-  return await apiCall(`/search/without-image?page=${page}&limit=${limit}`);
-};
+export const getBooksWithoutImage = async (page = 1, limit = 20, filters = {}) =>
+  apiCall(
+    `/search/without-image${buildQuery({
+      page,
+      limit,
+      q: filters.q,
+      department: filters.department,
+    })}`,
+  );
 
-export const getMostViewedBooks = async (page = 1, limit = 20) => {
-  console.log(`🔍 Fetching most viewed books: page ${page}, limit ${limit}`);
-  return await apiCall(`/search/most-viewed?page=${page}&limit=${limit}`);
-};
+export const getMostViewedBooks = async (page = 1, limit = 20, filters = {}) =>
+  apiCall(
+    `/search/most-viewed${buildQuery({
+      page,
+      limit,
+      q: filters.q,
+      department: filters.department,
+      availability: filters.availability,
+    })}`,
+  );
 
-export const incrementBookViews = async (bookId) => {
-  return await apiCall(`/update/book/views/${bookId}`, {
-    method: 'PATCH',
+export const incrementBookViews = async (bookId) =>
+  apiCall(`/update/book/views/${bookId}`, {
+    method: "PATCH",
   });
-};
 
-export const deleteBook = async (bookId) => {
-  console.log(`🗑️ API: Deleting book ${bookId}...`);
-  return await apiCall(`/delete/${bookId}`, {
-    method: 'DELETE'
+export const deleteBook = async (bookId) =>
+  apiCall(`/delete/${bookId}`, {
+    method: "DELETE",
   });
-};
 
-export const getDashboardStats = async () => {
-  return await apiCall('/dashboard/stats');
-};
+export const getDashboardStats = async () => apiCall("/dashboard/stats");
 
-export const toggleBookAvailability = async (bookId, currentStatus) => {
-  console.log(`🔄 Toggling availability for ${bookId} to ${!currentStatus}`);
-  return await apiCall(`/feature/change-visiblity/${bookId}`, {
-    method: 'PATCH',
+export const toggleBookAvailability = async (bookId, currentStatus) =>
+  apiCall(`/feature/change-visiblity/${bookId}`, {
+    method: "PATCH",
     body: { isAvailable: !currentStatus },
   });
-};
 
 export const uploadBookImage = async (file, bookId) => {
-  console.log(`📤 Uploading image...`);
   const formData = new FormData();
-  formData.append('file', file);
-  if (bookId) {
-    formData.append('bookId', bookId);
-  }
+  formData.append("file", file);
+  if (bookId) formData.append("bookId", bookId);
 
-  const token = getAuthToken();
-  const headers = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  // NOTE: apiCall wrapper sets Content-Type to application/json by default, 
-  // but for FormData we need to let the browser set it (with boundary).
-  // So we use fetch directly here or override headers.
-  // Using fetch directly to avoid apiCall's JSON stringification.
-
-  try {
-    const response = await fetch(`${VITE_SERVER_URL}/upload/image`, {
-      method: 'POST',
-      headers, // Let browser set Content-Type
-      body: formData,
-      credentials: 'include',
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Image upload failed');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('❌ Image upload error:', error);
-    throw error;
-  }
+  return apiCall("/upload/image", {
+    method: "POST",
+    body: formData,
+  });
 };
 
-export const DEPARTMENTS = [
-  "CSE", "IT", "ECE", "EEE", "MECH", "CIVIL",
-  "MBA", "MCA", "BBA", "BCA", "B.COM", "B.SC",
-  "B.PHARM", "B.ARCH", "B.DES", "B.ED", "B.LLB",
-  "B.PT", "B.HM", "B.MS", "B.AS", "B.FA", "B.FT", "AGRICULTURE"
-];
+export { DEPARTMENTS };

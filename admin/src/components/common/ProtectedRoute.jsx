@@ -7,28 +7,30 @@ export default function ProtectedRoute({ children }) {
   const location = useLocation();
 
   useEffect(() => {
+    let isActive = true;
+
     const verify = async () => {
       const isAuth = await checkAuth();
-      setIsAuthenticated(isAuth);
-      console.log(
-        "🔒 Route Check:",
-        isAuth ? "Authenticated" : "Not Authenticated",
-        location.pathname,
-      );
+      if (isActive) setIsAuthenticated(isAuth);
     };
+
     verify();
-  }, [location]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [location.pathname]);
 
   if (isAuthenticated === null) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
       </div>
-    ); // Simple loading state
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return children;

@@ -3,7 +3,7 @@
 // Custom Modals | Fixed Spacing | Production Ready
 // ============================================================
 
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminLogout } from "../api/axios";
 
@@ -16,16 +16,15 @@ import BookStats from "../components/books/BookStats";
 import BookTable from "../components/books/BookTable";
 import BookTableSkeleton from "../components/books/BookTableSkeleton";
 
-// Pages
-import AddBook from "./Addbook";
-import EditBook from "./EditBook";
-
 // Common
 import SearchBar from "../components/common/SearchBar";
 
 // Hooks & Data
 import { useBooks } from "../hooks/useBooks";
-import { DEPARTMENTS } from "../api/axios";
+import { DEPARTMENTS, getBookId, sanitizeCsvValue } from "../constants/catalog";
+
+const AddBook = lazy(() => import("./AddBook"));
+const EditBook = lazy(() => import("./EditBook"));
 
 // ============================================================
 // 🔔 TOAST NOTIFICATION — replaces alert()
@@ -47,6 +46,16 @@ const Toast = ({ message, type = "error", onClose }) => {
   );
 };
 
+const FormLoader = () => (
+  <div className="mt-10 mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="h-6 w-40 animate-pulse rounded bg-gray-200" />
+    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="h-11 animate-pulse rounded bg-gray-100" />
+      <div className="h-11 animate-pulse rounded bg-gray-100" />
+    </div>
+  </div>
+);
+
 // ============================================================
 // 🏛️ ADMIN DASHBOARD
 // ============================================================
@@ -57,7 +66,7 @@ function AdminDashboard() {
   const {
     books, stats, isLoading, error,
     addBook, updateBook, deleteBook,
-    toggleAvailability, refreshBooks, searchBooks,
+    toggleAvailability, refreshBooks,
     page, totalPages, totalItems,
     changePage, filters, updateFilter,
   } = useBooks();
@@ -66,8 +75,6 @@ function AdminDashboard() {
   const [isAddFormOpen, setIsAddFormOpen]   = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [selectedBook, setSelectedBook]     = useState(null);
-  const [searchQuery, setSearchQuery]       = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
 
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState({
@@ -122,7 +129,7 @@ function AdminDashboard() {
 
   // ── Delete — open custom modal ────────────────────────────
   const handleDeleteBook = (bookId) => {
-    const book = books.find((b) => (b._id || b.id) === bookId);
+    const book = books.find((b) => getBookId(b) === bookId);
     setDeleteModal({
       isOpen: true,
       bookId,
@@ -155,12 +162,7 @@ function AdminDashboard() {
   };
 
   const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (query?.trim()) {
-      searchBooks(query);
-    } else {
-      refreshBooks();
-    }
+    updateFilter("q", query.trim());
   };
 
   // ── Department-wise CSV export ────────────────────────────
@@ -188,7 +190,7 @@ function AdminDashboard() {
       exportData
         .map(
           (book) =>
-            `"${book.title}","${book.author || ""}","${book.department || ""}","${book.isbn || ""}","${book.publisher || ""}","${book.edition || ""}","${book.views || 0}","${book.isAvailable ? "Yes" : "No"}"`
+            `"${sanitizeCsvValue(book.title)}","${sanitizeCsvValue(book.author)}","${sanitizeCsvValue(book.department)}","${sanitizeCsvValue(book.isbn)}","${sanitizeCsvValue(book.publisher)}","${sanitizeCsvValue(book.edition)}","${book.views || 0}","${book.isAvailable ? "Yes" : "No"}"`
         )
         .join("\n");
 
@@ -200,7 +202,7 @@ function AdminDashboard() {
     link.click();
     document.body.removeChild(link);
 
-    showToast(`Exported ${exportData.length} books — ${filename}`, "success");
+    showToast(`Exported ${exportData.length} books - ${filename}`, "success");
   };
 
   // ── Error state ───────────────────────────────────────────
@@ -208,7 +210,7 @@ function AdminDashboard() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">⚠️</div>
+          <div className="text-6xl mb-4">!</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Failed to Load Admin Panel</h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="space-y-3">
@@ -244,21 +246,21 @@ function AdminDashboard() {
       {/* ✅ FIXED: pt-[67px] = 3px accent + 64px header */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-[67px] pb-10">
 
-        {/* Add Book Form */}
-        <AddBook
-          isOpen={isAddFormOpen}
-          onClose={() => setIsAddFormOpen(false)}
-          onBookAdded={handleAddBook}
-          onBulkUploaded={handleBulkUploadComplete}
-        />
+        <Suspense fallback={<FormLoader />}>
+          <AddBook
+            isOpen={isAddFormOpen}
+            onClose={() => setIsAddFormOpen(false)}
+            onBookAdded={handleAddBook}
+            onBulkUploaded={handleBulkUploadComplete}
+          />
 
-        {/* Edit Book Form */}
-        <EditBook
-          isOpen={isEditFormOpen}
-          book={selectedBook}
-          onClose={() => { setIsEditFormOpen(false); setSelectedBook(null); }}
-          onBookUpdated={handleUpdateBook}
-        />
+          <EditBook
+            isOpen={isEditFormOpen}
+            book={selectedBook}
+            onClose={() => { setIsEditFormOpen(false); setSelectedBook(null); }}
+            onBookUpdated={handleUpdateBook}
+          />
+        </Suspense>
 
         {/* ── Stats — always first ─────────────────────── */}
         <div className="mt-6 mb-6">
@@ -268,10 +270,10 @@ function AdminDashboard() {
         {/* ── Search & Filter ──────────────────────────── */}
         <div className="mb-5">
           <SearchBar
-            searchQuery={searchQuery}
+            searchQuery={filters.q}
             setSearchQuery={handleSearch}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
+            selectedCategory={filters.department}
+            setSelectedCategory={(value) => updateFilter("department", value)}
             categories={DEPARTMENTS}
             filters={filters}
             updateFilter={updateFilter}

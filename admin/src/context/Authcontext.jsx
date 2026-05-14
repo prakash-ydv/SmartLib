@@ -1,5 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
+import {
+  adminLogin,
+  adminLogout,
+  checkAuth as verifyAdminSession,
+} from "../api/axios";
 
 export const AuthContext = createContext(null);
 
@@ -7,14 +12,15 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("libraryAdmin");
+  const refreshSession = useCallback(async () => {
+    setIsLoading(true);
+    const isValid = await verifyAdminSession();
+    const savedUser = localStorage.getItem("adminData");
 
-    if (savedUser) {
+    if (isValid && savedUser) {
       try {
         setUser(JSON.parse(savedUser));
       } catch {
-        localStorage.removeItem("libraryAdmin");
         setUser(null);
       }
     } else {
@@ -22,37 +28,34 @@ export const AuthProvider = ({ children }) => {
     }
 
     setIsLoading(false);
+    return isValid;
   }, []);
 
-  const login = async (username, password) => {
-    await new Promise((r) => setTimeout(r, 500));
+  useEffect(() => {
+    refreshSession();
+  }, [refreshSession]);
 
-    if (username === "admin" && password === "admin123") {
-      const userData = {
-        username: "admin",
-        role: "admin",
-      };
-
-      localStorage.setItem("libraryAdmin", JSON.stringify(userData));
-      setUser(userData);
-      return true;
-    }
-    return false;
+  const login = async (email, password) => {
+    const response = await adminLogin(email, password);
+    await refreshSession();
+    return response?.status === "success";
   };
 
-  const logout = () => {
-  localStorage.removeItem("libraryAdmin");
-  setUser(null);
-  window.location.href = '/login'; 
-};
-
-  const isAuthenticated = () => {
-    return !!localStorage.getItem("libraryAdmin");
+  const logout = async () => {
+    await adminLogout();
+    setUser(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, logout, isAuthenticated }}
+      value={{
+        user,
+        isLoading,
+        login,
+        logout,
+        isAuthenticated: () => Boolean(user),
+        refreshSession,
+      }}
     >
       {children}
     </AuthContext.Provider>

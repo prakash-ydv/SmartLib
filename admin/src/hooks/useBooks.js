@@ -1,63 +1,50 @@
-// ============================================================
-// 📚 useBooks HOOK — IES SMARTLIB ADMIN
-// CRUD + Real-time polling + Consistent refresh
-// ============================================================
-
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
-  getAllBooks,
   addBook as apiAddBook,
-  updateBook as apiUpdateBook,
   deleteBook as apiDeleteBook,
-  toggleBookAvailability as apiToggleAvailability,
-  getDashboardStats,
-  searchBookByTitle,
-  getUnavailableBooks,
+  getAllBooks,
   getBooksWithoutImage,
-  getMostViewedBooks
-} from '../api/axios';
+  getDashboardStats,
+  getMostViewedBooks,
+  getUnavailableBooks,
+  toggleBookAvailability as apiToggleAvailability,
+  updateBook as apiUpdateBook,
+} from "../api/axios";
+import { getBookId, getCopyCount, isBookAvailable } from "../constants/catalog";
 
-// ✅ Silent polling interval — 30 seconds
 const POLL_INTERVAL_MS = 30_000;
+const PAGE_SIZE = 10;
 
-// ============================================================
-// 🔧 GROUP RAW BACKEND ROWS FOR UI
-// Multiple rows with same ISBN = one book with copies count
-// ============================================================
-const groupBooksForUI = (rawBooks = []) => {
-  const map = {};
+const normalizeBookForUI = (book = {}) => {
+  const copies = Array.isArray(book.copies)
+    ? book.copies.filter(Boolean)
+    : book.copies
+      ? [String(book.copies)]
+      : [];
 
-  rawBooks.forEach(book => {
-    const key =
-      book.isbn ||
-      `${book.title}-${book.author}-${book.edition}-${book.publisher}`;
-
-    if (!map[key]) {
-      map[key] = { ...book, acc_list: [], copies: 0 };
-    }
-
-    const acc = book.acc || book.accession || book.accessionNumber || null;
-    if (acc && !map[key].acc_list.includes(acc)) {
-      map[key].acc_list.push(acc);
-    }
-
-    map[key].copies = map[key].acc_list.length;
-  });
-
-  return Object.values(map);
+  return {
+    ...book,
+    copies,
+    copyCount: getCopyCount({ ...book, copies }),
+    isAvailable: isBookAvailable({ ...book, copies }),
+  };
 };
 
-// ============================================================
-// 📚 MAIN useBooks HOOK
-// ============================================================
+const normalizeBooksForUI = (rawBooks = []) => rawBooks.map(normalizeBookForUI);
+
+const getSafeNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
 export function useBooks() {
-  const [books, setBooks]               = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState(null);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats]               = useState({
+  const [stats, setStats] = useState({
     totalBooks: 0,
     availableBooks: 0,
     unavailableBooks: 0,
@@ -65,136 +52,126 @@ export function useBooks() {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const page  = parseInt(searchParams.get("page") || "1", 10);
-  const limit = 10;
+  const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+  const filters = useMemo(
+    () => ({
+      q: searchParams.get("q") || "",
+      department: searchParams.get("department") || "all",
+      availability: searchParams.get("availability") || "all",
+      image: searchParams.get("image") || "all",
+      sort: searchParams.get("sort") || "default",
+    }),
+    [searchParams],
+  );
 
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  const filters = {
-    availability: searchParams.get("availability") || "all",
-    image:        searchParams.get("image")        || "all",
-    sort:         searchParams.get("sort")         || "default",
-  };
+  const loadBooks = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setLoading(true);
+        setError(null);
 
-  // ============================================================
-  // 🔄 LOAD BOOKS — used for initial load + refresh
-  // silent=true → no loading spinner (used by polling)
-  // ============================================================
-  const loadBooks = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      setError(null);
+        const apiFilters = {
+          q: filters.q,
+          department: filters.department,
+          availability: filters.availability,
+        };
 
-      let booksPromise;
-      if (filters.availability === 'unavailable') {
-        booksPromise = getUnavailableBooks(page, limit);
-      } else if (filters.image === 'no-image') {
-        booksPromise = getBooksWithoutImage(page, limit);
-      } else if (filters.sort === 'most-viewed') {
-        booksPromise = getMostViewedBooks(page, limit);
-      } else {
-        booksPromise = getAllBooks(page, limit);
-      }
-
-      const [booksResponse, statsResponse] = await Promise.all([
-        booksPromise,
-        getDashboardStats(),
-      ]);
-
-      if (statsResponse?.status === 'success') {
-        setStats(statsResponse.data);
-      }
-
-      if (booksResponse?.status === 'success') {
-        let rawBooks = booksResponse.data || [];
-
-        if (filters.image === 'no-image') {
-          rawBooks = rawBooks.filter((b) => !b.image && !b.cover_url);
-        }
-        if (filters.sort === 'most-viewed') {
-          rawBooks.sort((a, b) => (b.views || 0) - (a.views || 0));
+        let booksPromise;
+        if (filters.image === "no-image") {
+          booksPromise = getBooksWithoutImage(page, PAGE_SIZE, apiFilters);
+        } else if (filters.sort === "most-viewed") {
+          booksPromise =
+            filters.q || filters.department !== "all" || filters.availability !== "all"
+              ? getAllBooks(page, PAGE_SIZE, apiFilters)
+              : getMostViewedBooks(page, PAGE_SIZE, apiFilters);
+        } else if (filters.availability === "unavailable") {
+          booksPromise = getUnavailableBooks(page, PAGE_SIZE, apiFilters);
+        } else {
+          booksPromise = getAllBooks(page, PAGE_SIZE, apiFilters);
         }
 
-        const groupedBooks   = groupBooksForUI(rawBooks);
-        const pagination     = booksResponse?.pagination || {};
+        const [booksResponse, statsResponse] = await Promise.all([
+          booksPromise,
+          getDashboardStats(),
+        ]);
 
-        const parsedTotalItems = Number(
-          pagination.totalItems ?? booksResponse.totalItems ?? booksResponse.total ?? groupedBooks.length
-        );
-        const safeTotalItems = Number.isFinite(parsedTotalItems) && parsedTotalItems >= 0
-          ? parsedTotalItems
-          : groupedBooks.length;
+        if (statsResponse?.status === "success") {
+          setStats(statsResponse.data);
+        }
 
-        const parsedTotalPages = Number(
-          pagination.totalPages ?? booksResponse.totalPages
-        );
-        const safeTotalPages = Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
-          ? parsedTotalPages
-          : Math.max(1, Math.ceil(safeTotalItems / limit));
+        if (booksResponse?.status === "success") {
+          const normalizedBooks = normalizeBooksForUI(booksResponse.data || []);
+          if (filters.sort === "most-viewed") {
+            normalizedBooks.sort((a, b) => (b.views || 0) - (a.views || 0));
+          }
+          const pagination = booksResponse.pagination || {};
+          const safeTotalItems = getSafeNumber(
+            pagination.totalItems ?? booksResponse.totalItems,
+            normalizedBooks.length,
+          );
+          const safeTotalPages = Math.max(
+            1,
+            getSafeNumber(
+              pagination.totalPages ?? booksResponse.totalPages,
+              Math.ceil(safeTotalItems / PAGE_SIZE),
+            ),
+          );
 
-        setBooks(groupedBooks);
-        setTotalItems(safeTotalItems);
-        setTotalPages(safeTotalPages);
-      } else {
-        setBooks([]);
-        setTotalItems(0);
-        setTotalPages(1);
+          setBooks(normalizedBooks);
+          setTotalItems(safeTotalItems);
+          setTotalPages(safeTotalPages);
+        } else {
+          setBooks([]);
+          setTotalItems(0);
+          setTotalPages(1);
+        }
+      } catch (err) {
+        if (!silent) {
+          setError(err.message || "Failed to load books");
+          setBooks([]);
+          setTotalItems(0);
+          setTotalPages(1);
+        }
+      } finally {
+        if (!silent) setLoading(false);
       }
+    },
+    [filters, page],
+  );
 
-      setLoading(false);
-    } catch (err) {
-      console.error('❌ Load books failed:', err);
-      if (!silent) {
-        setError(err.message || 'Failed to load books');
-        setBooks([]);
-        setTotalItems(0);
-        setTotalPages(1);
-        setLoading(false);
-      }
-    }
-  }, [
-    page,
-    filters.availability,
-    filters.image,
-    filters.sort,
-  ]);
-
-  // Initial load + refresh trigger
   useEffect(() => {
     loadBooks();
   }, [loadBooks, refreshTrigger]);
 
-  // ✅ Silent polling — har 30s pe background refresh
   useEffect(() => {
     const pollId = setInterval(() => {
-      loadBooks(true); // silent = true — no spinner
+      loadBooks(true);
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(pollId);
   }, [loadBooks]);
 
-  // ============================================================
-  // ➕ ADD BOOK — triggers instant refresh
-  // ============================================================
+  const refreshBooks = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
   const addBook = async (bookData) => {
     try {
       const response = await apiAddBook(bookData);
-      // ✅ Instant refresh — client sees new book within seconds
-      setRefreshTrigger(prev => prev + 1);
+      refreshBooks();
       return { success: true, book: response.data };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ============================================================
-  // ✏️ UPDATE BOOK — triggers instant refresh
-  // ============================================================
   const updateBook = async (updatedBookData) => {
     try {
-      const bookId = updatedBookData._id || updatedBookData.id;
-      if (!bookId) throw new Error('Book ID missing');
+      const bookId = getBookId(updatedBookData);
+      if (!bookId) throw new Error("Book ID missing");
 
       const payload = { ...updatedBookData };
       delete payload._id;
@@ -204,89 +181,57 @@ export function useBooks() {
       delete payload.views;
       delete payload.__v;
       delete payload.acc_list;
-      delete payload.copies;
+      delete payload.copyCount;
 
       await apiUpdateBook(bookId, payload);
-      // ✅ Instant refresh
-      setRefreshTrigger(prev => prev + 1);
+      refreshBooks();
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ============================================================
-  // 🗑️ DELETE BOOK — ✅ FIXED: now uses refreshTrigger (consistent)
-  // ============================================================
   const deleteBook = async (bookId) => {
     try {
       await apiDeleteBook(bookId);
-      // ✅ FIXED: was loadBooks(true), now consistent with others
-      setRefreshTrigger(prev => prev + 1);
+      refreshBooks();
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ============================================================
-  // 🔄 TOGGLE AVAILABILITY — triggers instant refresh
-  // ============================================================
   const toggleAvailability = async (bookId) => {
     try {
-      const book = books.find(b => (b._id || b.id) === bookId);
-      if (!book) throw new Error('Book not found');
+      const book = books.find((item) => getBookId(item) === bookId);
+      if (!book) throw new Error("Book not found");
 
       await apiToggleAvailability(bookId, book.isAvailable);
-      // ✅ Instant refresh
-      setRefreshTrigger(prev => prev + 1);
+      refreshBooks();
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   };
 
-  // ============================================================
-  // 🔍 SEARCH BOOKS
-  // ============================================================
-  const searchBooks = async (query) => {
-    try {
-      if (!query || query.trim() === '') {
-        loadBooks();
-        return;
-      }
+  const updateFilter = useCallback(
+    (key, value) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
 
-      setLoading(true);
-      const response = await searchBookByTitle(query);
+        if (!value || value === "all" || value === "default") {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
 
-      if (response?.status === 'success') {
-        const grouped = groupBooksForUI(response.data || []);
-        setBooks(grouped);
-        setTotalItems(grouped.length);
-        setTotalPages(1);
-      } else {
-        setBooks([]);
-        setTotalItems(0);
-        setTotalPages(1);
-      }
+        next.set("page", "1");
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
-      setLoading(false);
-    } catch (err) {
-      setError(err.message || 'Search failed');
-      setLoading(false);
-    }
-  };
-
-  // ============================================================
-  // 🔄 MANUAL REFRESH
-  // ============================================================
-  const refreshBooks = useCallback(() => {
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
-
-  // ============================================================
-  // 📤 RETURN
-  // ============================================================
   return {
     books,
     stats,
@@ -297,28 +242,21 @@ export function useBooks() {
     deleteBook,
     toggleAvailability,
     refreshBooks,
-    searchBooks,
     page,
     totalPages,
     totalItems,
+    filters,
+    updateFilter,
+    pageSize: PAGE_SIZE,
     changePage: (newPage) => {
       if (newPage >= 1 && newPage <= totalPages) {
-        setSearchParams(prev => {
+        setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
           next.set("page", newPage.toString());
           return next;
         });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
-    },
-    filters,
-    updateFilter: (key, value) => {
-      setSearchParams(prev => {
-        const next = new URLSearchParams(prev);
-        next.set(key, value);
-        next.set("page", "1");
-        return next;
-      });
     },
   };
 }

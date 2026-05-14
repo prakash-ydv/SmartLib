@@ -131,7 +131,7 @@ const Pagination = ({
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
               className="min-h-[40px] px-3 py-1.5 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-[#0f172a] focus:border-[#0f172a] focus:outline-none transition-all cursor-pointer"
             >
-              {[12, 24, 48, 96].map((n) => (
+              {[12, 24, 48].map((n) => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
@@ -162,7 +162,7 @@ const Pagination = ({
                 onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
                 className="px-3 py-1.5 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-[#0f172a] focus:border-[#0f172a] focus:outline-none transition-all cursor-pointer"
               >
-                {[12, 24, 48, 96].map((n) => (
+                {[12, 24, 48].map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>

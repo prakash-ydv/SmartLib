@@ -1,6 +1,6 @@
 // ============================================
 // 🔍 SEARCH BAR — IES SMARTLIB
-// Debounced · Recent Searches · Mobile-First
+// Debounced - Recent Searches - Mobile-First
 // ============================================
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -68,6 +68,10 @@ const SearchBar = ({ searchQuery, setSearchQuery }) => {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
   }, []);
 
   // ── Debounced search ─────────────────────────────────────
@@ -158,7 +162,7 @@ const SearchBar = ({ searchQuery, setSearchQuery }) => {
           onChange={handleChange}
           onFocus={() => setFocused(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search by title, author, ISBN, department…"
+          placeholder="Search by title, author, ISBN, department..."
           className="flex-1 py-3.5 md:py-4 text-sm md:text-base text-gray-900 placeholder-gray-400 bg-transparent outline-none font-medium"
           aria-label="Search books"
           autoComplete="off"

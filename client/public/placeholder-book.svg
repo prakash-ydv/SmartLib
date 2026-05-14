@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="640" viewBox="0 0 480 640" role="img" aria-labelledby="title desc">
+  <title id="title">Book cover unavailable</title>
+  <desc id="desc">A simple placeholder cover for books without an uploaded image.</desc>
+  <rect width="480" height="640" fill="#eef2ff"/>
+  <rect x="72" y="72" width="336" height="496" rx="24" fill="#ffffff" stroke="#c7d2fe" stroke-width="8"/>
+  <rect x="112" y="128" width="256" height="28" rx="14" fill="#6366f1"/>
+  <rect x="112" y="184" width="208" height="18" rx="9" fill="#a5b4fc"/>
+  <rect x="112" y="224" width="248" height="18" rx="9" fill="#c7d2fe"/>
+  <path d="M156 348c0-32 26-58 58-58h52c32 0 58 26 58 58v66H156v-66z" fill="#e0e7ff"/>
+  <path d="M168 416h144c19 0 34 15 34 34v18H134v-18c0-19 15-34 34-34z" fill="#818cf8"/>
+  <text x="240" y="526" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#4338ca">No Cover</text>
+</svg>

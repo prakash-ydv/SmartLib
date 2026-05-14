@@ -16,7 +16,7 @@ import { adminLogout } from "../../api/axios";
 import logo from "../../assets/logo.png";
 
 // Departments for export dropdown
-import { DEPARTMENTS } from "../../api/axios";
+import { DEPARTMENTS } from "../../constants/catalog";
 
 // ============================================================
 // 📤 EXPORT MODAL

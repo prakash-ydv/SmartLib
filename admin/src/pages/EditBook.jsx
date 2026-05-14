@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import BookForm from "../components/books/BookForm";
+import { uploadBookImage } from "../api/axios";
 
 /**
  * ✅ EDIT BOOK PAGE - PRODUCTION READY
@@ -173,7 +174,6 @@ const EditBook = ({ isOpen, book, onClose, onBookUpdated }) => {
     setError(null);
 
     try {
-      const { uploadBookImage } = await import("../api/axios"); // Dynamic import to avoid circular dep if any, or just standard import
       const result = await uploadBookImage(file, bookId);
 
       if (result.status === "success") {

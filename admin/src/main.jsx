@@ -3,18 +3,8 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-import { AuthProvider } from "./context/Authcontext";
-import { BookProvider } from "./context/BookContext";
-import { AddBookProvider } from "./context/AddBookContext";
-
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <AuthProvider>
-      <BookProvider>
-        <AddBookProvider>
-          <App />
-        </AddBookProvider>
-      </BookProvider>
-    </AuthProvider>
+    <App />
   </BrowserRouter>
 );

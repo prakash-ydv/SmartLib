@@ -1,10 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import {
-  createContext,
-  useCallback,
-  useState,
-  useContext,
-} from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import { getAllBooks, getBookById } from "../api/bookAPI";
 
 export const BookContext = createContext(null);
@@ -15,26 +10,29 @@ export function BookProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchBooks = useCallback(async (page = 1, limit = 24) => {
+  const fetchBooks = useCallback(async (page = 1, limit = 24, filters = {}) => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await getAllBooks(page, limit);
+      const res = await getAllBooks(page, limit, filters);
 
       setAllBooks(res.data || []);
       setPagination(res.pagination || {});
     } catch (err) {
-      console.error("❌ Fetch error:", err.message);
+      console.error("Fetch error:", err.message);
       setError("Failed to load books");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const refreshBooks = useCallback(() => {
-    fetchBooks(1, 24);
-  }, [fetchBooks]);
+  const refreshBooks = useCallback(
+    (filters = {}) => {
+      fetchBooks(1, 24, filters);
+    },
+    [fetchBooks],
+  );
 
   const clearError = useCallback(() => {
     setError(null);

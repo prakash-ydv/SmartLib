@@ -1,24 +1,15 @@
-// ============================================
-// 🏠 HOME PAGE - MOBILE-FIRST OPTIMIZED
-// ============================================
-
-import { useState, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { RefreshCw, AlertTriangle, Library } from "lucide-react";
 
-// Context
 import { useBooks } from "../context/BookContext";
-
-// Components
+import { getLiveCatalogStats } from "../utils/bookDisplay";
 import Hero from "../components/Hero";
 import SearchBar from "../components/SearchBar";
 import FilterPanel from "../components/FilterPanel";
 import BookCard from "../components/BookCard";
 import Pagination from "../components/Pagination";
 
-// ============================================
-// 📦 LOADING SPINNER COMPONENT
-// ============================================
 const LoadingSpinner = ({ size = "md", message }) => {
   const sizes = {
     sm: "h-8 w-8",
@@ -40,148 +31,78 @@ const LoadingSpinner = ({ size = "md", message }) => {
   );
 };
 
-// ============================================
-// 🏠 HOME PAGE COMPONENT
-// ============================================
 function HomePage() {
   const navigate = useNavigate();
   const booksGridRef = useRef(null);
-
-  // Context
-  const { allBooks, loading, error, refreshBooks, fetchBooks, pagination } =
+  const { allBooks, loading, error, fetchBooks, pagination } =
     useBooks();
 
-  // Local State
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     branch: "all",
-    year: "all",
-    genre: "all",
     availability: "all",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(24);
 
-  // ============================================
-  // ✅ REMOVED: duplicate fetchAllBooks useEffect
-  // BookContext already fetches on mount — no need to fetch again here
-  // ============================================
-
-  // ============================================
-  // 🔍 FILTER BOOKS (Client-side)
-  // ============================================
-  const filteredBooks = useMemo(() => {
-    let result = [...allBooks];
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const search = searchQuery.toLowerCase();
-      result = result.filter(
-        (book) =>
-          book.title?.toLowerCase().includes(search) ||
-          book.author?.toLowerCase().includes(search) ||
-          book.isbn?.toLowerCase().includes(search) ||
-          book.publisher?.toLowerCase().includes(search),
-      );
-    }
-
-    // Department filter
-    if (filters.branch !== "all") {
-      result = result.filter(
-        (book) =>
-          book.department?.toUpperCase() === filters.branch.toUpperCase(),
-      );
-    }
-
-    // Availability filter
-    if (filters.availability !== "all") {
-      const isAvailable = filters.availability === "available";
-      result = result.filter((book) => {
-        const available =
-          book.isAvailable || (book.copies && book.copies.length > 0);
-        return available === isAvailable;
-      });
-    }
-
-    return result;
-  }, [allBooks, searchQuery, filters]);
-
-  // ============================================
-  // 📄 PAGINATION
-  // ============================================
-  const totalPages = pagination.totalPages || 1;
-
-  useEffect(() => {
-    fetchBooks(currentPage, itemsPerPage);
-  }, [currentPage, itemsPerPage, fetchBooks]);
-  // ============================================
-  // 📊 STATISTICS
-  // ============================================
-  const stats = useMemo(
+  const requestFilters = useMemo(
     () => ({
-      total: allBooks.length,
-      available: allBooks.filter(
-        (b) => b.isAvailable || (b.copies && b.copies.length > 0),
-      ).length,
-      showing: filteredBooks.length,
+      query: searchQuery,
+      department: filters.branch,
+      availability: filters.availability,
     }),
-    [allBooks, filteredBooks],
+    [filters.availability, filters.branch, searchQuery],
   );
 
-  // ============================================
-  // 🎯 EVENT HANDLERS
-  // ============================================
+  const totalPages = pagination.totalPages || 1;
+  const totalItems = pagination.totalItems || allBooks.length;
+
+  useEffect(() => {
+    fetchBooks(currentPage, itemsPerPage, requestFilters);
+  }, [currentPage, fetchBooks, itemsPerPage, requestFilters]);
+
+  const stats = useMemo(
+    () => getLiveCatalogStats({ totalItems, pageBooks: allBooks }),
+    [allBooks, totalItems],
+  );
+
+  const scrollToCatalog = () => {
+    if (!booksGridRef.current) return;
+
+    const headerOffset = 100;
+    const elementPosition = booksGridRef.current.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+    window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+  };
 
   const handleSearchChange = (value) => {
     setSearchQuery(value);
     setCurrentPage(1);
   };
 
-  // ✅ Hero search handler — sets searchQuery AND scrolls to catalog
   const handleHeroSearch = (term) => {
     setSearchQuery(term);
     setCurrentPage(1);
-    setTimeout(() => {
-      if (booksGridRef.current) {
-        const headerOffset = 100;
-        const elementPosition =
-          booksGridRef.current.getBoundingClientRect().top;
-        const offsetPosition =
-          elementPosition + window.pageYOffset - headerOffset;
-        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
-      }
-    }, 150);
+    setTimeout(scrollToCatalog, 150);
   };
 
   const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
+    setFilters({
+      branch: newFilters.branch || "all",
+      availability: newFilters.availability || "all",
+    });
     setCurrentPage(1);
   };
 
   const handleReset = () => {
     setSearchQuery("");
-    setFilters({
-      branch: "all",
-      year: "all",
-      genre: "all",
-      availability: "all",
-    });
+    setFilters({ branch: "all", availability: "all" });
     setCurrentPage(1);
   };
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-
-    if (booksGridRef.current) {
-      const headerOffset = 100;
-      const elementPosition = booksGridRef.current.getBoundingClientRect().top;
-      const offsetPosition =
-        elementPosition + window.pageYOffset - headerOffset;
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-    }
+    setTimeout(scrollToCatalog, 50);
   };
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
@@ -189,22 +110,17 @@ function HomePage() {
     setCurrentPage(1);
   };
 
-  const handleBookClick = (bookId) => {
-    navigate(`/book/${bookId}`);
-  };
-
   const handleRefresh = () => {
-    refreshBooks();
+    fetchBooks(currentPage, itemsPerPage, requestFilters);
   };
 
-  // ============================================
-  // ❌ ERROR STATE
-  // ============================================
   if (error && !loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <div className="text-5xl md:text-6xl mb-4">⚠️</div>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 text-amber-600 mb-4">
+            <AlertTriangle className="h-8 w-8" />
+          </div>
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
             Failed to Load Books
           </h2>
@@ -214,7 +130,7 @@ function HomePage() {
               onClick={handleRefresh}
               className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold min-h-[44px]"
             >
-              🔄 Try Again
+              Try Again
             </button>
             <button
               onClick={() => window.location.reload()}
@@ -228,25 +144,21 @@ function HomePage() {
     );
   }
 
-  // ============================================
-  // 🎨 MAIN RENDER
-  // ============================================
   return (
     <>
-      <Hero onSearch={handleHeroSearch} />
+      <Hero onSearch={handleHeroSearch} catalogStats={stats} />
 
-      {/* Main Container - Mobile First */}
       <div className="container-custom section-padding">
-        {/* Page Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-              📚 SmartLib Catalog
+            <h1 className="flex items-center gap-3 text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+              <Library className="h-7 w-7 text-indigo-600" />
+              SmartLib Catalog
             </h1>
             <p className="text-sm md:text-base text-gray-600">
               {loading && allBooks.length === 0
                 ? "Loading books from database..."
-                : `Browse ${stats.total.toLocaleString()} books from our collection`}
+                : `Browse ${stats.total.toLocaleString()} matching books from our collection`}
             </p>
           </div>
 
@@ -256,20 +168,16 @@ function HomePage() {
             className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm disabled:bg-gray-400 disabled:cursor-not-allowed min-h-[44px] flex items-center gap-2 shrink-0"
           >
             {loading ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" />
-                <span className="hidden sm:inline">Loading...</span>
-              </>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" />
             ) : (
-              <>
-                <span>🔄</span>
-                <span className="hidden sm:inline">Refresh</span>
-              </>
+              <RefreshCw className="h-4 w-4" />
             )}
+            <span className="hidden sm:inline">
+              {loading ? "Loading..." : "Refresh"}
+            </span>
           </button>
         </div>
 
-        {/* Search & Filter Section */}
         <div className="space-y-4">
           <SearchBar
             searchQuery={searchQuery}
@@ -284,9 +192,7 @@ function HomePage() {
           />
         </div>
 
-        {/* Books Section */}
         <div className="mt-8 md:mt-12" ref={booksGridRef}>
-          {/* Section Header - Mobile Optimized */}
           <div className="flex flex-col gap-4 mb-6 md:mb-8">
             <div className="flex items-center gap-3">
               <div className="w-1.5 md:w-2 h-6 md:h-8 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shrink-0" />
@@ -295,86 +201,59 @@ function HomePage() {
               </h2>
             </div>
 
-            {/* Stats Row - Mobile Friendly */}
             <div className="flex flex-wrap items-center gap-2 md:gap-4">
               <div className="text-xs md:text-sm text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
-                {totalPages > 0
-                  ? `Page ${currentPage} of ${totalPages}`
-                  : "No pages"}
+                Page {currentPage} of {totalPages}
               </div>
-              <div className="text-xs md:text-sm text-gray-600 font-medium bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg">
+              <div className="text-xs md:text-sm font-medium bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg">
                 {stats.showing} Showing
               </div>
-              <div className="text-xs md:text-sm text-gray-600 font-medium bg-green-100 text-green-700 px-3 py-1.5 rounded-lg">
-                {stats.available} Available
+              <div className="text-xs md:text-sm font-medium bg-green-100 text-green-700 px-3 py-1.5 rounded-lg">
+                {stats.availableOnPage} Available on this page
               </div>
             </div>
           </div>
 
-          {/* Content Area */}
           {loading && allBooks.length === 0 ? (
-            // ⏳ Initial Loading
-            <LoadingSpinner
-              size="lg"
-              message="Loading books from MongoDB Atlas..."
-            />
-          ) : filteredBooks.length > 0 ? (
+            <LoadingSpinner size="lg" message="Loading books from library..." />
+          ) : allBooks.length > 0 ? (
             <>
-              {/* 📚 Books Grid - Mobile First */}
               <div className="books-grid mb-8 md:mb-12">
-                {filteredBooks.map((book) => (
+                {allBooks.map((book) => (
                   <BookCard
                     key={book._id || book.id}
                     book={book}
-                    onClick={handleBookClick}
+                    onClick={(bookId) => navigate(`/book/${bookId}`)}
                   />
                 ))}
               </div>
 
-              {/* 📄 Pagination */}
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
                 itemsPerPage={itemsPerPage}
-                totalItems={pagination.totalItems || 0}
+                totalItems={totalItems}
                 onItemsPerPageChange={handleItemsPerPageChange}
               />
             </>
           ) : (
-            // 📭 Empty State - Mobile Optimized
             <div className="text-center py-12 md:py-20 px-4">
               <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-full mb-4 md:mb-6">
-                <svg
-                  className="w-8 h-8 md:w-10 md:h-10 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
+                <Library className="w-8 h-8 md:w-10 md:h-10 text-gray-400" />
               </div>
               <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 mb-2">
                 No books found
               </h3>
               <p className="text-sm md:text-base text-gray-600 mb-6 max-w-md mx-auto">
-                {allBooks.length === 0
-                  ? "No books available in the library database"
-                  : "Try adjusting your search or filters"}
+                Try adjusting your search or filters.
               </p>
-              {allBooks.length > 0 && (
-                <button
-                  onClick={handleReset}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm md:text-base min-h-[44px]"
-                >
-                  Clear All Filters
-                </button>
-              )}
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm md:text-base min-h-[44px]"
+              >
+                Clear All Filters
+              </button>
             </div>
           )}
         </div>

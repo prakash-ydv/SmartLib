@@ -18,10 +18,16 @@ import {
   Twitter,
   Linkedin
 } from 'lucide-react';
+import { useBooks } from '../context/BookContext';
+import { DEPARTMENTS, formatCount } from '../utils/bookDisplay';
 
 const Footer = () => {
   const navigate = useNavigate();
+  const { pagination } = useBooks();
   const currentYear = new Date().getFullYear();
+  const catalogSize = pagination?.totalItems
+    ? `${formatCount(pagination.totalItems)} books`
+    : 'the live catalog';
 
   // Quick Links Data
 
@@ -91,7 +97,7 @@ const Footer = () => {
             </button>
             
             <p className="text-sm md:text-base text-gray-300 leading-relaxed">
-              Access 50,000+ books across 100+ departments. Scan the QR code outside our library for instant access.
+              Access {catalogSize} across {DEPARTMENTS.length} departments with live availability from the library database.
             </p>
             
             {/* QR Access Card */}

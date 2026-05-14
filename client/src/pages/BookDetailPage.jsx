@@ -23,9 +23,14 @@ import {
 
 // Context
 import { useBooks } from "../context/BookContext";
+import {
+  getBookId,
+  getCopyCount,
+  isBookAvailable,
+} from "../utils/bookDisplay";
 
 // API
-import { updateBookViews, getBookDescription } from "../api/bookAPI";
+import { updateBookViews, getBookDescription, getAllBooks } from "../api/bookAPI";
 
 // Components
 import BookCard from "../components/BookCard";
@@ -107,6 +112,8 @@ export default function BookDetailPage() {
   // Description state
   const [description, setDescription] = useState("");
   const [descLoading, setDescLoading] = useState(false);
+  const [relatedBooks, setRelatedBooks] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   // ============================================
   // 🔄 FETCH BOOK
@@ -172,53 +179,85 @@ export default function BookDetailPage() {
   // 🔗 RELATED BOOKS — memoized
   // Sirf tab recompute hoga jab book ya allBooks change ho
   // ============================================
-  const relatedBooks = useMemo(() => {
+  const cachedRelatedBooks = useMemo(() => {
     if (!book || !allBooks.length) return [];
 
-    const currentId = book._id || book.id;
-
-    // Primary: same department
-    const byDepartment = allBooks.filter((b) => {
-      const bId = b._id || b.id;
-      return (
-        bId !== currentId &&
-        b.department &&
+    const currentId = getBookId(book);
+    const sameDepartment = allBooks.filter(
+      (item) =>
+        getBookId(item) !== currentId &&
+        item.department &&
         book.department &&
-        b.department.toUpperCase() === book.department.toUpperCase()
-      );
-    });
+        item.department.toUpperCase() === book.department.toUpperCase(),
+    );
+    const sameAuthor = allBooks.filter(
+      (item) =>
+        getBookId(item) !== currentId &&
+        item.author &&
+        book.author &&
+        item.author.toLowerCase() === book.author.toLowerCase(),
+    );
 
-    if (byDepartment.length >= 2) {
-      return byDepartment.slice(0, RELATED_BOOKS_LIMIT);
+    return [...sameDepartment, ...sameAuthor]
+      .filter(
+        (item, index, list) =>
+          list.findIndex((candidate) => getBookId(candidate) === getBookId(item)) ===
+          index,
+      )
+      .slice(0, RELATED_BOOKS_LIMIT);
+  }, [book, allBooks]);
+
+  useEffect(() => {
+    if (!book?.department) {
+      setRelatedBooks(cachedRelatedBooks);
+      return;
     }
 
-    // Fallback: same author
-    const byAuthor = allBooks.filter((b) => {
-      const bId = b._id || b.id;
-      return (
-        bId !== currentId &&
-        b.author &&
-        book.author &&
-        b.author.toLowerCase() === book.author.toLowerCase()
-      );
-    });
+    let isActive = true;
 
-    // Merge: department pehle, phir author (no duplicates)
-    const merged = [
-      ...byDepartment,
-      ...byAuthor.filter(
-        (b) => !byDepartment.some((d) => (d._id || d.id) === (b._id || b.id))
-      ),
-    ];
+    const loadRelatedBooks = async () => {
+      setRelatedLoading(true);
+      try {
+        const response = await getAllBooks(1, 12, {
+          department: book.department,
+        });
 
-    return merged.slice(0, RELATED_BOOKS_LIMIT);
-  }, [book, allBooks]);
+        if (!isActive) return;
+
+        const currentId = getBookId(book);
+        const apiRelated = (response.data || []).filter(
+          (item) => getBookId(item) !== currentId,
+        );
+
+        const merged = [...apiRelated, ...cachedRelatedBooks].filter(
+          (item, index, list) =>
+            list.findIndex(
+              (candidate) => getBookId(candidate) === getBookId(item),
+            ) === index,
+        );
+
+        setRelatedBooks(merged.slice(0, RELATED_BOOKS_LIMIT));
+      } catch {
+        if (isActive) setRelatedBooks(cachedRelatedBooks);
+      } finally {
+        if (isActive) setRelatedLoading(false);
+      }
+    };
+
+    loadRelatedBooks();
+
+    return () => {
+      isActive = false;
+    };
+  }, [book, cachedRelatedBooks]);
 
   // ============================================
   // 🎯 HANDLERS
   // ============================================
   const handleGoBack = () => navigate(-1);
   const handleImageError = () => setImageError(true);
+  const available = isBookAvailable(book);
+  const copyCount = getCopyCount(book);
 
   // ============================================
   // 🎨 LOADING STATE
@@ -248,7 +287,7 @@ export default function BookDetailPage() {
                 Go Back
               </button>
               <button onClick={fetchBookDetail} className="btn btn-primary">
-                🔄 Try Again
+                Try Again
               </button>
             </div>
           </div>
@@ -310,7 +349,7 @@ export default function BookDetailPage() {
               <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden shadow-xl">
                 {!imageError ? (
                   <img
-                    src={book.cover_url || "/placeholder-book.png"}
+                    src={book.cover_url || "/placeholder-book.svg"}
                     alt={`Cover of ${book.title}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={handleImageError}
@@ -329,14 +368,14 @@ export default function BookDetailPage() {
               {/* Availability Badge */}
               <div
                 className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
-                  book.isAvailable || (book.copies && book.copies.length > 0)
+                  available
                     ? "bg-green-500/90 text-white"
                     : "bg-red-500/90 text-white"
                 }`}
               >
-                {book.isAvailable || (book.copies && book.copies.length > 0)
-                  ? "✓ Available"
-                  : "✗ Not Available"}
+                {available
+                  ? "Available"
+                  : "Not Available"}
               </div>
             </div>
 
@@ -352,12 +391,12 @@ export default function BookDetailPage() {
                 </div>
               )}
 
-              {book.copies && book.copies.length > 0 && (
+              {copyCount > 0 && (
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 text-center border border-green-100">
                   <Copy className="h-5 w-5 text-green-600 mx-auto mb-1" />
                   <p className="text-sm text-gray-600 font-medium">Copies</p>
                   <p className="text-lg font-bold text-gray-900">
-                    {book.copies.length}
+                    {copyCount}
                   </p>
                 </div>
               )}
@@ -494,27 +533,31 @@ export default function BookDetailPage() {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <button
-              className="btn btn-primary flex-1"
-              onClick={() => alert("Issue book functionality coming soon!")}
+              className="btn btn-primary flex-1 opacity-60 cursor-not-allowed" disabled
+              title="Online issuing is not enabled yet. Please contact the library desk."
             >
               <BookOpen className="h-5 w-5" />
               Issue Book
             </button>
             <button
-              className="btn btn-secondary flex-1"
-              onClick={() => alert("Wishlist functionality coming soon!")}
+              className="btn btn-secondary flex-1 opacity-60 cursor-not-allowed" disabled
+              title="Wishlist accounts are not enabled yet."
             >
               <Heart className="h-5 w-5" />
               Add to Wishlist
             </button>
           </div>
+          <p className="text-xs text-gray-500">
+            Online issue and wishlist actions are not enabled yet. Please use the
+            copy IDs above when contacting the library desk.
+          </p>
         </div>
       </div>
 
       {/* ============================================ */}
       {/* 🔗 RELATED BOOKS SECTION                    */}
       {/* ============================================ */}
-      {relatedBooks.length > 0 && (
+      {(relatedBooks.length > 0 || relatedLoading) && (
         <section
           aria-labelledby="related-books-heading"
           className="mt-16 md:mt-20"
@@ -550,19 +593,22 @@ export default function BookDetailPage() {
           <div className="h-px bg-gradient-to-r from-indigo-200 via-purple-200 to-transparent mb-8" />
 
           {/* Books Grid */}
-          <div className="books-grid">
-            {relatedBooks.map((relatedBook) => (
-              <BookCard
-                key={relatedBook._id || relatedBook.id}
-                book={relatedBook}
-
-
-              />
-            ))}
-          </div>
+          {relatedLoading ? (
+            <RelatedBooksSkeleton />
+          ) : (
+            <div className="books-grid">
+              {relatedBooks.map((relatedBook) => (
+                <BookCard
+                  key={getBookId(relatedBook)}
+                  book={relatedBook}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
     </div>
   );
 }
+

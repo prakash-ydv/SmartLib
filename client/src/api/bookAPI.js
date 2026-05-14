@@ -1,5 +1,6 @@
 ﻿// src/api/bookAPI.js
 import axios from "axios";
+import { DEPARTMENTS } from "../utils/bookDisplay";
 
 // ✅ In dev:  VITE_SERVER_URL is not set → falls back to "/api" → Vite proxy handles it
 // ✅ In prod: VITE_SERVER_URL=https://smartlib-xgxi.onrender.com (set in Netlify env vars)
@@ -39,10 +40,30 @@ axiosInstance.interceptors.response.use(
 );
 
 // ✅ All Books (paginated)
-export async function getAllBooks(page = 1, limit = 100) {
+function buildBookListParams(page, limit, filters = {}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+
+  const query = filters.query?.trim();
+  const department = filters.department || filters.branch;
+  const availability = filters.availability;
+
+  if (query) params.set("q", query);
+  if (department && department !== "all") params.set("department", department);
+  if (availability && availability !== "all") {
+    params.set("availability", availability);
+  }
+
+  return params.toString();
+}
+
+export async function getAllBooks(page = 1, limit = 100, filters = {}) {
   try {
+    const params = buildBookListParams(page, limit, filters);
     const { data } = await axiosInstance.get(
-      `/search/all-books?page=${page}&limit=${limit}`
+      `/search/all-books?${params}`
     );
     return {
       status: "success",
@@ -142,36 +163,7 @@ export async function searchBooks(query) {
 }
 
 export function getDepartmentsList() {
-  return [
-    "ALL",
-    "CSE",
-    "IT",
-    "ECE",
-    "EEE",
-    "MECH",
-    "CIVIL",
-    "MBA",
-    "MCA",
-    "BBA",
-    "BCA",
-    "B.COM",
-    "B.SC",
-    "B.PHARM",
-    "B.ARCH",
-    "B.DES",
-    "B.ED",
-    "B.LLB",
-    "B.PT",
-    "B.HM",
-    "B.MS",
-    "B.AS",
-    "B.FA",
-    "B.FT",
-    "AGRICULTURE",
-    "D.Pharma",
-    "LAW",
-    "AYURVEDA",
-  ];
+  return ["ALL", ...DEPARTMENTS.map((department) => department.value)];
 }
 
 export default {

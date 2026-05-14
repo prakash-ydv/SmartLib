@@ -1,7 +1,8 @@
 ﻿import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import BookForm from "../components/books/BookForm";
-import { uploadBulkBooks } from "../api/axios";
+import { uploadBookImage, uploadBulkBooks } from "../api/axios";
+import { DEPARTMENTS } from "../constants/catalog";
 
 const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
   // ===============================
@@ -30,7 +31,7 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState(null);
   const [showDetailedReport, setShowDetailedReport] = useState(false);
-  const [defaultDepartment, setDefaultDepartment] = useState("GENERAL");
+  const [defaultDepartment, setDefaultDepartment] = useState("CSE");
 
   // ===============================
   // RESET FUNCTIONS
@@ -99,7 +100,6 @@ const AddBook = ({ isOpen, onClose, onBookAdded, onBulkUploaded }) => {
     setError(null);
 
     try {
-      const { uploadBookImage } = await import("../api/axios");
       const result = await uploadBookImage(file, null);
 
       if (result.status === "success") {
@@ -896,18 +896,11 @@ ${uploadResult.report.errors.map((err, i) => `${i + 1}. ${err}`).join("\n")}`;
             disabled={isUploading}
             className="block w-full px-4 py-2 text-sm text-gray-900 border-2 border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none disabled:opacity-50"
           >
-            <option value="GENERAL">GENERAL</option>
-            <option value="CSE">CSE</option>
-            <option value="IT">IT</option>
-            <option value="ECE">ECE</option>
-            <option value="EEE">EEE</option>
-            <option value="MECH">MECH</option>
-            <option value="CIVIL">CIVIL</option>
-            <option value="MBA">MBA</option>
-            <option value="BCA">BCA</option>
-            <option value="B.COM">B.COM</option>
-            <option value="B.SC">B.SC</option>
-            <option value="AGRICULTURE">AGRICULTURE</option>
+            {DEPARTMENTS.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
           </select>
         </div>
 

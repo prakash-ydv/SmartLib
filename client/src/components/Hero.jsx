@@ -1,7 +1,7 @@
 // ============================================================
-// 🎨 HERO COMPONENT — IES UNIVERSITY SMARTLIB
-// Full-screen image slider · Embedded search · Stats
-// Mobile-first · Production-ready · Zero external deps
+// 🎨 HERO COMPONENT - IES UNIVERSITY SMARTLIB
+// Full-screen image slider - Embedded search - Stats
+// Mobile-first - Production-ready - Zero external deps
 // ============================================================
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -12,19 +12,20 @@ import { Search, BookOpen, Users, TrendingUp, ChevronDown, ChevronLeft, ChevronR
 // 📸 SLIDE DATA
 // Replace src values with your actual college/library images.
 // Place images in: /src/assets/hero/
-// Recommended size: 1920×1080px, JPG compressed <300KB each
+// Recommended size: 1920x1080px, JPG compressed <300KB each
 // ──────────────────────────────────────────────────────────────
 import slide1 from "../assets/hero/slide1.jpg";
 import slide2 from "../assets/hero/slide2.jpg";
 import slide3 from "../assets/hero/slide3.jpg";
 import slide4 from "../assets/hero/slide4.jpg";
+import { formatCount } from "../utils/bookDisplay";
 
 const SLIDES = [
   {
     src: slide1,
-    alt: "IES University Library — Main Reading Hall",
+    alt: "IES University Library - Main Reading Hall",
     headline: "Discover Your Next Great Read",
-    sub: "Browse 50,000+ books across 104 departments — instantly.",
+    sub: "Search live books by title, author, ISBN, or department.",
   },
   {
     src: slide2,
@@ -42,7 +43,7 @@ const SLIDES = [
     src: slide4,
     alt: "IES University Students",
     headline: "Built for Every Student",
-    sub: "Smart filters, real-time availability, 104 departments covered.",
+    sub: "Smart filters and live availability connected to the library database.",
   },
 ];
 
@@ -51,22 +52,22 @@ const AUTOPLAY_INTERVAL = 5000; // 5 seconds
 // ──────────────────────────────────────────────────────────────
 // 📊 STATS DATA
 // ──────────────────────────────────────────────────────────────
-const STATS = [
+const getStats = (catalogStats = {}) => [
   {
     icon: BookOpen,
-    value: "50,000+",
-    label: "Books Available",
+    value: formatCount(catalogStats.total),
+    label: "Matching Books",
     color: "from-blue-400 to-cyan-400",
   },
   {
     icon: Users,
-    value: "5,000+",
-    label: "Active Readers",
+    value: formatCount(catalogStats.showing),
+    label: "Shown Now",
     color: "from-violet-400 to-purple-400",
   },
   {
     icon: TrendingUp,
-    value: "104",
+    value: formatCount(catalogStats.departments),
     label: "Departments",
     color: "from-emerald-400 to-green-400",
   },
@@ -75,8 +76,9 @@ const STATS = [
 // ============================================================
 // 🎨 HERO COMPONENT
 // ============================================================
-const Hero = ({ onSearch }) => {
+const Hero = ({ onSearch, catalogStats }) => {
   const navigate = useNavigate();
+  const stats = getStats(catalogStats);
 
   // ── Slider state ─────────────────────────────────────────
   const [current, setCurrent] = useState(0);
@@ -170,7 +172,7 @@ const Hero = ({ onSearch }) => {
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* ════════════════════════════════════════════════════
-          IMAGE SLIDER — Background layer
+          IMAGE SLIDER - Background layer
       ════════════════════════════════════════════════════ */}
       <div className="absolute inset-0" aria-hidden="true">
         {SLIDES.map((slide, i) => (
@@ -186,7 +188,7 @@ const Hero = ({ onSearch }) => {
               loading={i === 0 ? "eager" : "lazy"}
               decoding="async"
             />
-            {/* Dark gradient overlay — ensures text is always readable */}
+            {/* Dark gradient overlay - ensures text is always readable */}
             <div
               className="absolute inset-0"
               style={{
@@ -209,7 +211,7 @@ const Hero = ({ onSearch }) => {
       />
 
       {/* ════════════════════════════════════════════════════
-          CONTENT — Foreground layer
+          CONTENT - Foreground layer
       ════════════════════════════════════════════════════ */}
       <div className="relative h-full flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
 
@@ -220,11 +222,11 @@ const Hero = ({ onSearch }) => {
               className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
               aria-hidden="true"
             />
-            IES University · Digital Library System
+            IES University - Digital Library System
           </span>
         </div>
 
-        {/* ── Headline — changes per slide ──────────────── */}
+        {/* ── Headline - changes per slide ──────────────── */}
         <div className="text-center mb-6 md:mb-8 max-w-3xl mx-auto">
           <h1
             key={current}
@@ -242,7 +244,7 @@ const Hero = ({ onSearch }) => {
         </div>
 
         {/* ════════════════════════════════════════════════
-            HERO SEARCH BAR — Primary entry point
+            HERO SEARCH BAR - Primary entry point
         ════════════════════════════════════════════════ */}
         <form
           onSubmit={handleSearchSubmit}
@@ -265,7 +267,7 @@ const Hero = ({ onSearch }) => {
               type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by title, author, ISBN, or department…"
+              placeholder="Search by title, author, ISBN, or department..."
               className="w-full pl-12 md:pl-14 pr-28 md:pr-36 py-4 md:py-5 rounded-2xl bg-white/95 backdrop-blur-md text-gray-900 placeholder-gray-400 text-sm md:text-base font-medium shadow-2xl border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-all duration-200"
               aria-label="Search books"
               autoComplete="off"
@@ -310,7 +312,7 @@ const Hero = ({ onSearch }) => {
           className="flex flex-wrap items-center justify-center gap-3 md:gap-6 mb-8 animate-fadeIn"
           aria-label="Library statistics"
         >
-          {STATS.map((stat, i) => (
+          {stats.map((stat, i) => (
             <div
               key={i}
               className="flex items-center gap-2 md:gap-3 px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15"
@@ -355,7 +357,7 @@ const Hero = ({ onSearch }) => {
           SLIDER CONTROLS
       ════════════════════════════════════════════════════ */}
 
-      {/* Prev / Next arrows — desktop only */}
+      {/* Prev / Next arrows - desktop only */}
       <button
         onClick={prevSlide}
         className="hidden md:flex absolute left-4 lg:left-6 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/25 border border-white/20 text-white transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 backdrop-blur-sm"
@@ -372,7 +374,7 @@ const Hero = ({ onSearch }) => {
         <ChevronRight className="h-5 w-5" aria-hidden="true" />
       </button>
 
-      {/* Slide dots — bottom center */}
+      {/* Slide dots - bottom center */}
       <div
         className="absolute bottom-5 md:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2"
         role="tablist"
@@ -394,7 +396,7 @@ const Hero = ({ onSearch }) => {
         ))}
       </div>
 
-      {/* Progress bar — slide timer indicator */}
+      {/* Progress bar - slide timer indicator */}
       <div
         className="absolute bottom-0 left-0 h-[3px] bg-white/20 w-full"
         aria-hidden="true"
