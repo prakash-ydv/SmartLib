@@ -10,12 +10,9 @@ import FilterPanel from "../components/FilterPanel";
 import BookCard from "../components/BookCard";
 import Pagination from "../components/Pagination";
 
+// ─── LOADING SPINNER ──────────────────────────────────────────────────────────
 const LoadingSpinner = ({ size = "md", message }) => {
-  const sizes = {
-    sm: "h-8 w-8",
-    md: "h-12 w-12",
-    lg: "h-16 w-16",
-  };
+  const sizes = { sm: "h-8 w-8", md: "h-12 w-12", lg: "h-16 w-16" };
 
   return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center px-4">
@@ -31,50 +28,63 @@ const LoadingSpinner = ({ size = "md", message }) => {
   );
 };
 
+// ─── HOME PAGE ────────────────────────────────────────────────────────────────
 function HomePage() {
-  const navigate = useNavigate();
+  const navigate     = useNavigate();
   const booksGridRef = useRef(null);
-  const { allBooks, loading, error, fetchBooks, pagination } =
-    useBooks();
+
+  const { allBooks, loading, error, fetchBooks, pagination } = useBooks();
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  // ── New Filter State ───────────────────────────────────────────────
+  // faculty    → top-level category  (e.g. "Engineering & Technology")
+  // department → sub-filter          (e.g. "CSE")
+  // availability → "all" | "available" | "unavailable"
   const [filters, setFilters] = useState({
-    branch: "all",
+    faculty:      "all",
+    department:   "all",
     availability: "all",
   });
-  const [currentPage, setCurrentPage] = useState(1);
+
+  const [currentPage, setCurrentPage]   = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(24);
 
+  // ── Build request filters (passed to API) ──────────────────────────
   const requestFilters = useMemo(
     () => ({
-      query: searchQuery,
-      department: filters.branch,
+      query:        searchQuery,
+      faculty:      filters.faculty,
+      department:   filters.department,
       availability: filters.availability,
     }),
-    [filters.availability, filters.branch, searchQuery],
+    [searchQuery, filters.faculty, filters.department, filters.availability]
   );
 
   const totalPages = pagination.totalPages || 1;
   const totalItems = pagination.totalItems || allBooks.length;
 
+  // ── Fetch on filter/page change ────────────────────────────────────
   useEffect(() => {
     fetchBooks(currentPage, itemsPerPage, requestFilters);
   }, [currentPage, fetchBooks, itemsPerPage, requestFilters]);
 
+  // ── Stats ──────────────────────────────────────────────────────────
   const stats = useMemo(
     () => getLiveCatalogStats({ totalItems, pageBooks: allBooks }),
-    [allBooks, totalItems],
+    [allBooks, totalItems]
   );
 
+  // ── Scroll to catalog ──────────────────────────────────────────────
   const scrollToCatalog = () => {
     if (!booksGridRef.current) return;
-
-    const headerOffset = 100;
+    const headerOffset    = 100;
     const elementPosition = booksGridRef.current.getBoundingClientRect().top;
-    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+    const offsetPosition  = elementPosition + window.pageYOffset - headerOffset;
     window.scrollTo({ top: offsetPosition, behavior: "smooth" });
   };
 
+  // ── Handlers ───────────────────────────────────────────────────────
   const handleSearchChange = (value) => {
     setSearchQuery(value);
     setCurrentPage(1);
@@ -86,9 +96,12 @@ function HomePage() {
     setTimeout(scrollToCatalog, 150);
   };
 
+  // FilterPanel setFilters directly call karta hai
+  // filters mein faculty + department + availability hote hain
   const handleFilterChange = (newFilters) => {
     setFilters({
-      branch: newFilters.branch || "all",
+      faculty:      newFilters.faculty      || "all",
+      department:   newFilters.department   || "all",
       availability: newFilters.availability || "all",
     });
     setCurrentPage(1);
@@ -96,7 +109,7 @@ function HomePage() {
 
   const handleReset = () => {
     setSearchQuery("");
-    setFilters({ branch: "all", availability: "all" });
+    setFilters({ faculty: "all", department: "all", availability: "all" });
     setCurrentPage(1);
   };
 
@@ -114,6 +127,7 @@ function HomePage() {
     fetchBooks(currentPage, itemsPerPage, requestFilters);
   };
 
+  // ── Error State ────────────────────────────────────────────────────
   if (error && !loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -144,11 +158,14 @@ function HomePage() {
     );
   }
 
+  // ── Main Render ────────────────────────────────────────────────────
   return (
     <>
       <Hero onSearch={handleHeroSearch} catalogStats={stats} />
 
       <div className="container-custom section-padding">
+
+        {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
           <div className="flex-1">
             <h1 className="flex items-center gap-3 text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
@@ -178,6 +195,7 @@ function HomePage() {
           </button>
         </div>
 
+        {/* ── Search + Filter ─────────────────────────────────────── */}
         <div className="space-y-4">
           <SearchBar
             searchQuery={searchQuery}
@@ -192,6 +210,7 @@ function HomePage() {
           />
         </div>
 
+        {/* ── Books Grid ──────────────────────────────────────────── */}
         <div className="mt-8 md:mt-12" ref={booksGridRef}>
           <div className="flex flex-col gap-4 mb-6 md:mb-8">
             <div className="flex items-center gap-3">
@@ -214,6 +233,7 @@ function HomePage() {
             </div>
           </div>
 
+          {/* Loading */}
           {loading && allBooks.length === 0 ? (
             <LoadingSpinner size="lg" message="Loading books from library..." />
           ) : allBooks.length > 0 ? (
@@ -238,6 +258,7 @@ function HomePage() {
               />
             </>
           ) : (
+            /* No Results */
             <div className="text-center py-12 md:py-20 px-4">
               <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-full mb-4 md:mb-6">
                 <Library className="w-8 h-8 md:w-10 md:h-10 text-gray-400" />

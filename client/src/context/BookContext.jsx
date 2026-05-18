@@ -1,15 +1,39 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useState } from "react";
-import { getAllBooks, getBookById } from "../api/bookAPI";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { getAllBooks, getBookById, getFacultyMeta } from "../api/bookAPI";
 
 export const BookContext = createContext(null);
 
 export function BookProvider({ children }) {
-  const [allBooks, setAllBooks] = useState([]);
+  const [allBooks, setAllBooks]     = useState([]);
   const [pagination, setPagination] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState(null);
 
+  // ── Faculty Meta (faculties + facultyDepartments) ─────────────────
+  const [facultyMeta, setFacultyMeta] = useState({
+    faculties: [],
+    facultyDepartments: {},
+  });
+  const [metaLoading, setMetaLoading] = useState(false);
+
+  // ── Fetch Faculty Meta (once on mount) ────────────────────────────
+  useEffect(() => {
+    async function loadMeta() {
+      try {
+        setMetaLoading(true);
+        const meta = await getFacultyMeta();
+        setFacultyMeta(meta);
+      } catch (err) {
+        console.error("FacultyMeta fetch failed:", err.message);
+      } finally {
+        setMetaLoading(false);
+      }
+    }
+    loadMeta();
+  }, []);
+
+  // ── Fetch Books ───────────────────────────────────────────────────
   const fetchBooks = useCallback(async (page = 1, limit = 24, filters = {}) => {
     try {
       setLoading(true);
@@ -28,37 +52,34 @@ export function BookProvider({ children }) {
   }, []);
 
   const refreshBooks = useCallback(
-    (filters = {}) => {
-      fetchBooks(1, 24, filters);
-    },
-    [fetchBooks],
+    (filters = {}) => fetchBooks(1, 24, filters),
+    [fetchBooks]
   );
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  const clearError = useCallback(() => setError(null), []);
 
+  // ── Cache lookup ──────────────────────────────────────────────────
   const getBookFromCache = useCallback(
     (bookId) => {
       if (!bookId) return null;
       return allBooks.find((book) => (book._id || book.id) === bookId) || null;
     },
-    [allBooks],
+    [allBooks]
   );
 
   const fetchBookById = useCallback(
     async (bookId) => {
-      const cachedBook = getBookFromCache(bookId);
-      if (cachedBook) return cachedBook;
-
+      const cached = getBookFromCache(bookId);
+      if (cached) return cached;
       return getBookById(bookId);
     },
-    [getBookFromCache],
+    [getBookFromCache]
   );
 
   return (
     <BookContext.Provider
       value={{
+        // Books
         allBooks,
         pagination,
         loading,
@@ -68,6 +89,10 @@ export function BookProvider({ children }) {
         clearError,
         getBookFromCache,
         fetchBookById,
+
+        // Faculty Meta
+        facultyMeta,
+        metaLoading,
       }}
     >
       {children}
