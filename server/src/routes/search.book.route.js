@@ -1,35 +1,38 @@
 import express from "express";
-import Book from "../models/book.model.js";
+
+import {
+  searchBookByTitle,
+  searchByViews,
+  searchByPage,
+  searchUnAvailbleBooks,
+  searchBooksWithoutImage,
+  getFacultyMeta,
+} from "../controllers/search.book.controller.js";
 
 const router = express.Router();
 
-// GET /search?q=java
-router.get("/", async (req, res) => {
-  try {
-    const query = req.query.q || "";
+// MAIN SEARCH + ALL BOOKS
+// /search/all-books?page=1&limit=24
+router.get("/all-books", searchByPage);
 
-    const books = await Book.find({
-      $or: [
-        { title: { $regex: query, $options: "i" } },
-        { author: { $regex: query, $options: "i" } },
-        { subjects: { $regex: query, $options: "i" } },
-        { tags: { $regex: query, $options: "i" } },
-      ],
-    });
+// FACULTY META
+// /search/faculty-meta
+router.get("/faculty-meta", getFacultyMeta);
 
-    res.status(200).json({
-      success: true,
-      count: books.length,
-      books,
-    });
-  } catch (error) {
-    console.error("Search Error:", error);
+// SEARCH BY TITLE
+// /search/title?title=java
+router.get("/title", searchBookByTitle);
 
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
+// MOST VIEWED BOOKS
+// /search/views
+router.get("/views", searchByViews);
+
+// UNAVAILABLE BOOKS
+// /search/unavailable
+router.get("/unavailable", searchUnAvailbleBooks);
+
+// BOOKS WITHOUT IMAGE
+// /search/no-image
+router.get("/no-image", searchBooksWithoutImage);
 
 export default router;
